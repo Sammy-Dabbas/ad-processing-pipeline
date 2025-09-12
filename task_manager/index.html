@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <script>
+    window.ws = new WebSocket("ws://127.0.0.1:8000/ws/tasks");
+    ws.onopen = () => {
+      console.log("Connected");
+      ws.send("Hello from browser");
+    };
+    ws.onmessage = (evt) => {
+      console.log("Received:", evt.data);
+    };
+    ws.onclose = () => console.log("Disconnected");
+  </script>
+  <h1>WebSocket Test</h1>
+  <p>Open your browser console to see messages.</p>
+</body>
+</html>
