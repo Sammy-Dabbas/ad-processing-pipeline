@@ -1,0 +1,33 @@
+services:
+  # Service 1: Reader
+  reader:
+    build: ./services/reader
+    volumes:
+      - shared_data:/app/data
+    environment:
+      - HEADER_USER=${HEADER_USER}
+      - HEADER_EMAIL=${HEADER_EMAIL}
+    restart: unless-stopped
+
+  # Service 2: Consumer  
+  consumer:
+    build: ./services/consumer
+    volumes:
+      - shared_data:/app/data
+    depends_on:
+      - reader
+    restart: unless-stopped
+
+  # Service 3: API
+  api:
+    build: ./services/api
+    volumes:
+      - shared_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - consumer
+    restart: unless-stopped
+
+volumes:
+  shared_data:

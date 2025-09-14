@@ -1,104 +1,120 @@
 import asyncio
 import json
 import os
-from typing import AsyncIterator, Optional, Tuple
+from typing import AsyncIterator, Optional
 from pathlib import Path
-import pandas as pd 
-
+from datetime import datetime, timezone
+from urllib.parse import urlparse, parse_qs
 # Consumer (local mode)  reads JSONL events from data/raw.jsonl (or latest rotated file),
 # de-duplicates by revision id, optionally normalizes/enriches, and writes JSONL to data/processed.jsonl.
 
-# Resolve project root  data directory consistently regardless of CWD
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
+# In container, data is always at /app/data
+DATA_DIR = Path("/app/data")
 
 # Default local file paths (rotation-aware helpers below may override RAW_FILE dynamically)
-RAW_FILE = DATA_DIR / "raw.jsonl"
 PROCESSED_FILE = DATA_DIR / "processed.jsonl"
 SEEN_REV_IDS = DATA_DIR / "consumer_seen_rev_ids.jsonl"
 
 
+def should_rotate(file_path: Path, max_megabytes: int, max_lines: int) -> bool:
+    try: 
+        file_size = os.path.getsize(file_path)
+        if file_size >= max_megabytes * 1024 * 1024: 
+            return True
+        else: 
+            return False 
+    except Exception as e: 
+        print(e)
+        return False
 
+def next_rotation_path(base_dir: Path, prefix: str) -> Path:
+    """
+    Build a new timestamped file path for the next JSONL file.
 
+    Example: data/raw-YYYYMMDD-HHMMSS.jsonl
+    """
+    # TODO: format datetime.utcnow() and return base_dir / f"{prefix}-{stamp}.jsonl"
+    now = datetime.utcnow()
+    return base_dir / f"{prefix}-{now.strftime('%Y%m%d-%H%M%S')}.jsonl"
 def parse_json_line(line: str) -> Optional[dict]:
-    """
-    Parse one JSONL line into a dict.
+    text = line.rstrip("\r\n")
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
 
-    Behavior:
-    - Trim trailing newline only; keep other whitespace as-is.
-    - Return None on empty/whitespace-only input.
-    - On JSON decode errors, return None (caller should increment an error counter).
 
-    Notes:
-    - This function must be fast; avoid exceptions for normal control flow.
-    - Do not mutate the returned dict here; normalization is handled elsewhere.
-    """
-    text =  line.rstrip("\r\n")
-    raise NotImplementedError
+
 
 
 def extract_rev_id(event: dict) -> Optional[str]:
-    """
-    Extract a stable de-duplication key from the raw event.
+    rev_new = event.get("revision", {}).get("new")
+    if isinstance(rev_new, int):
+        return str(rev_new)
+    if isinstance(rev_new, str) and rev_new.isdigit():
+        return rev_new
 
-    Expectations:
-    - Prefer "rev_id" (string or int). If int, convert to string.
-    - If not present, return None (caller should treat as non-deduplicable and count as error/skipped).
-    - Do not compute hashes or composite keys here; keep it trivial for local mode.
-    """
-    raise NotImplementedError
+    rev_id = event.get("rev_id")
+    if isinstance(rev_id, int):
+        return str(rev_id)
+    if isinstance(rev_id, str) and rev_id.isdigit():
+        return rev_id
+
+    rcid = event.get("id")
+    if isinstance(rcid, int):
+        return str(rcid)
+    if isinstance(rcid, str) and rcid.isdigit():
+        return rcid
+
+    return None
+    
 
 
-def build_processed_record(event: dict) -> dict:
-    """
-    Normalize the raw event into a compact schema written to processed.jsonl.
 
-    Recommended minimal schema (keys and types):
-    - rev_id: str                  # required, primary key for dedupe
-    - page_id: Optional[int]
-    - title: Optional[str]
-    - user: Optional[str]
-    - timestamp: Optional[str]     # ISO8601 (prefer), or source-provided timestamp string
-    - bot: Optional[bool]
-    - minor: Optional[bool]
-    - len_old: Optional[int]
-    - len_new: Optional[int]
-    - delta: Optional[int]         # len_new - len_old when both available
 
-    Behavior:
-    - Only map/extract fields; do not drop unknowns into the output.
-    - Keep values lightweight and JSON-serializable; avoid nesting here.
-    - Caller handles validation; this function may assume the input is a parsed dict.
-    """
-    raise NotImplementedError
+def build_processed_record(event: dict) -> Optional[dict]:
+    rev_id = extract_rev_id(event)
+    if rev_id is None:
+        return None
 
+    ts_iso = event.get("meta", {}).get("dt")
+    if ts_iso is None:
+        ts_epoch = event.get("timestamp")
+        if isinstance(ts_epoch, (int, float)):
+            ts_iso = datetime.fromtimestamp(ts_epoch, tz=timezone.utc).isoformat()
+
+    length = event.get("length") or {}
+    len_old = length.get("old") if isinstance(length.get("old"), int) else None
+    len_new = length.get("new") if isinstance(length.get("new"), int) else None
+    delta = (len_new - len_old) if (isinstance(len_new, int) and isinstance(len_old, int)) else None
+
+    return {
+        "rev_id": str(rev_id),
+        "page_id": event.get("page_id"),
+        "title": event.get("title"),
+        "wiki": event.get("wiki"),
+        "namespace": event.get("namespace"),
+        "comment": event.get("comment"), 
+        "page_key": f"{event.get('wiki', '')}:{event.get('namespace', '')}:{event.get('title', '')}",
+        "user": event.get("user"),
+        "timestamp": ts_iso,
+        "bot": event.get("bot"),
+        "minor": event.get("minor"),
+        "len_old": len_old,
+        "len_new": len_new,
+        "delta": delta,
+    }
+   
 
 def serialize_jsonl(obj: dict) -> str:
-    """
-    Convert a processed record to a compact JSON string suitable for JSON Lines.
-
-    Requirements:
-    - No trailing newline; the writer/appender adds exactly one "\n".
-    - Use separators to minimize size (e.g., {",": ",", ":": ":"}).
-    - Ensure ASCII-safe serialization if desired; keep UTF-8 by default.
-    """
-    raise NotImplementedError
-
+    return json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
 
 def append_jsonl(file_path: Path, json_text: str) -> None:
-    """
-    Append one compact JSON string followed by a single newline to a JSONL file.
-
-    Behavior:
-    - Ensure parent directory exists (mkdir -p).
-    - Open in append mode with UTF-8.
-    - Write json_text + "\n" (exactly one newline).
-
-    Error handling:
-    - Propagate OSError to caller or return a boolean if you prefer soft-fail.
-    - Caller is responsible for throttling/logging error bursts.
-    """
-    raise NotImplementedError
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(file_path, "a", encoding="utf-8") as f:
+        f.write(json_text + "\n")
 
 
 async def tail_jsonl(file_path: Path) -> AsyncIterator[str]:
@@ -110,7 +126,7 @@ async def tail_jsonl(file_path: Path) -> AsyncIterator[str]:
     while True:
         try:
             with open(current_path, "r", encoding="utf-8") as f:
-                f.seek(0, os.SEEK_END)  # or 0 to replay
+                f.seek(0, os.SEEK_END)  # or 0 to replay from start
                 while True:
                     offset = f.tell()
                     size = os.stat(current_path).st_size
@@ -127,7 +143,6 @@ async def tail_jsonl(file_path: Path) -> AsyncIterator[str]:
                     else:
                         no_progress_count += 1
                         await asyncio.sleep(delay)
-
                         if no_progress_count > 10:
                             next_path = find_latest_raw_path(base_dir)
                             if next_path != current_path:
@@ -140,7 +155,6 @@ async def tail_jsonl(file_path: Path) -> AsyncIterator[str]:
             continue
         except asyncio.CancelledError:
             return
-            
         
 
 
@@ -148,54 +162,96 @@ def find_latest_raw_path(base_dir: Path) -> Path:
     raw_path = base_dir / "raw.jsonl"
     base_dir.mkdir(parents=True, exist_ok=True)
 
-    if raw_path.exists():
-        return raw_path
-
     latest = max(
         base_dir.glob("raw-*.jsonl"),
         key=lambda p: p.name,  # YYYYMMDD-HHMMSS sorts lexically
         default=None,
     )
     return latest or raw_path
-
     
 
 
 async def run_consumer() -> None:
-    """
-    Orchestrate the consumer (local mode): read raw events, dedupe, normalize, write processed.
+    print("running consumer")
+    deduped = 0
+    errors = 0
+    written = 0
 
-    Flow:
-    1) Establish input/output paths (DATA_DIR, RAW_FILE/rotations, PROCESSED_FILE) and ensure directories exist.
-    2) Initialize in-memory de-duplication set `seen_rev_ids` (strings). Optionally load from a checkpoint file.
-    3) Tail the input JSONL (see `tail_jsonl`), reading each new line appended to the file.
-    4) For each line:
-       - Parse with `parse_json_line`; if None, increment `errors` and continue.
-       - Extract key via `extract_rev_id`; if None, increment `errors` and continue.
-       - If key already in `seen_rev_ids`, increment `deduped` and continue.
-       - Build a compact record via `build_processed_record` and serialize via `serialize_jsonl`.
-       - Append to `PROCESSED_FILE` with `append_jsonl`.
-       - Add key to `seen_rev_ids`; increment `written`.
-    5) Periodically (every N seconds or M events), log counters: total read, written, deduped, errors.
-    6) Optionally checkpoint `seen_rev_ids` and rotate processed output by size.
-
-    Resilience:
-    - If the input file rotates (raw.jsonl  raw-<ts>.jsonl), detect and re-open the newest file.
-    - On I/O errors, apply a small backoff and retry; do not crash the process on single-line failures.
-    - Support graceful shutdown (asyncio.CancelledError): flush/close any open handles and exit.
-    """
-
-    
     PROCESSED_FILE.parent.mkdir(parents=True, exist_ok=True)
     SEEN_REV_IDS.parent.mkdir(parents=True, exist_ok=True)
-    INPUT_PATH = find_latest_raw_path(DATA_DIR)
-    seen_ids = set()
-    async for event_json in tail_jsonl(INPUT_PATH): 
-        event_json = parse_json_line(event_json)
-    raise NotImplementedError
+
+    input_path = find_latest_raw_path(DATA_DIR)
+    seen_ids: set[str] = set()
+    
+    # Track current processed file for rotation
+    current_processed_file = PROCESSED_FILE
+
+    try:
+        async for line in tail_jsonl(input_path):
+            # Check rotation every 1000 events (but not on first event)
+            if written % 1000 == 0 and written > 0:
+                if should_rotate(current_processed_file, 128, 1_000_000):
+                    # Rotate: rename current file with timestamp
+                    rotated_file = next_rotation_path(DATA_DIR, "processed")
+                    if current_processed_file.exists():
+                        current_processed_file.rename(rotated_file)
+                        print(f"Rotated processed file to: {rotated_file}")
+                    # Reset to default name for new file
+                    current_processed_file = PROCESSED_FILE
+            event = parse_json_line(line)
+            if event is None:
+                errors += 1
+                continue
+
+            rev_id = extract_rev_id(event)
+            if rev_id is None:
+                errors += 1
+                continue
+
+            if rev_id in seen_ids:
+                deduped += 1
+                continue
+
+            record = build_processed_record(event)
+            if record is None:
+                errors += 1
+                continue
+
+            text = serialize_jsonl(record)
+            append_jsonl(current_processed_file, text)
+
+            seen_ids.add(rev_id)
+            written += 1
+            
+            # Log progress every 5000 events
+            if written % 5000 == 0:
+                print(f"Consumer processed {written} events (deduped: {deduped}, errors: {errors})")
+    except asyncio.CancelledError:
+        return
+    except Exception as e:
+        print(f"Consumer error: {e}")
+        return
+
+
+async def run_consumer_forever() -> None:
+    """
+    Run the consumer with automatic restart on errors.
+    This ensures the consumer keeps running even if there are transient failures.
+    """
+    while True:
+        try:
+            print("Starting consumer...")
+            await run_consumer()
+        except KeyboardInterrupt:
+            print("Consumer stopped by user")
+            break
+        except Exception as e:
+            print(f"Consumer crashed with error: {e}")
+            print("Restarting consumer in 5 seconds...")
+            await asyncio.sleep(5)
 
 
 if __name__ == "__main__":
-    asyncio.run(run_consumer())
+    asyncio.run(run_consumer_forever())
 
 
