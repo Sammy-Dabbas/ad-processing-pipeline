@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wikipedia Live Telemetry</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f1419, #1a1f2e);
+            color: #e2e8f0;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(90deg, #1e293b, #334155);
+            padding: 24px;
+            border-bottom: 1px solid #475569;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            text-align: center;
+            color: #f1f5f9;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .status-bar {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 12px 24px;
+            border-bottom: 1px solid #475569;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 1; 
+            }
+            50% { 
+                transform: scale(1.1);
+                opacity: 0.8; 
+            }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto 1fr 1fr;
+            gap: 16px;
+            padding: 20px;
+            height: calc(100vh - 140px);
+        }
+
+        .panel.full-width {
+            grid-column: span 3;
+        }
+
+        .panel.two-thirds {
+            grid-column: span 2;
+        }
+
+        .panel.chart {
+            min-height: 200px;
+        }
+
+        .panel.map {
+            min-height: 300px;
+            height: 300px;
+        }
+
+        .panel.metrics {
+            padding: 12px;
+        }
+
+        .panel.compact {
+            min-height: 250px;
+        }
+
+        #worldMap {
+            height: 270px;
+            width: 100%;
+            border-radius: 8px;
+            background: #1e293b;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 4px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #3b82f6;
+            line-height: 1;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid #475569;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .panel h2 {
+            color: #f1f5f9;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #475569;
+            padding-bottom: 12px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .metric {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .metric:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #3b82f6;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .events-feed {
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            background: rgba(15, 23, 42, 0.8);
+            border-left: 3px solid #3b82f6;
+            margin-bottom: 12px;
+            padding: 16px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            animation: slideIn 0.4s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .event-item:hover {
+            background: rgba(15, 23, 42, 1);
+            transform: translateX(4px);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .event-title {
+            color: #e2e8f0;
+            font-weight: 600;
+            margin-bottom: 8px;
+            word-break: break-word;
+            font-size: 14px;
+        }
+
+        .event-meta {
+            color: #94a3b8;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .event-wiki {
+            color: #f59e0b;
+            font-weight: 500;
+        }
+
+        .event-user {
+            color: #06b6d4;
+            font-weight: 500;
+        }
+
+        .event-size {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .bot-badge {
+            background: #ef4444;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .wiki-list {
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .wiki-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #475569;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .wiki-item:hover {
+            background: rgba(15, 23, 42, 0.5);
+            padding-left: 8px;
+        }
+
+        .wiki-name {
+            color: #f59e0b;
+            font-weight: 500;
+        }
+
+        .wiki-count {
+            color: #3b82f6;
+            font-weight: 700;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .connection-status.connected {
+            background: #10b981;
+        }
+
+        .alert-banner {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            color: white;
+            padding: 12px 24px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.5s ease-out;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .alert-banner.warning {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+        }
+
+        .alert-icon {
+            font-size: 20px;
+        }
+
+        .trending-item {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .trending-title {
+            color: #3b82f6;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .trending-meta {
+            color: #94a3b8;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
+    <div class="header">
+        <h1>🌐 WIKIPEDIA LIVE TELEMETRY</h1>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <div class="status-dot"></div>
+            <span>LIVE STREAM ACTIVE</span>
+        </div>
+        <div class="status-item">
+            <span id="timestamp">--:--:--</span>
+        </div>
+        <div class="status-item">
+            <span>GLOBAL EDIT MONITORING</span>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Row 1: Alerts -->
+        <div class="panel full-width">
+            <h2>🚨 Live Alerts & Trending Topics</h2>
+            <div id="alertsContainer">
+                <div style="text-align: center; color: #94a3b8; margin-top: 20px;">
+                    Monitoring for large edits and trending topics...
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Map, Events, Metrics -->
+        <div class="panel two-thirds map">
+            <h2>🌍 Global Wikipedia Activity</h2>
+            <div id="worldMap"></div>
+        </div>
+
+        <div class="panel metrics compact">
+            <h2>📊 Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="metric-value" id="totalEvents">0</div>
+                    <div class="metric-label">Total Events</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="eventsPerMin">0</div>
+                    <div class="metric-label">Events/Min</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="botPercentage">0%</div>
+                    <div class="metric-label">Bot Activity</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="avgEditSize">0</div>
+                    <div class="metric-label">Avg Edit Size</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Events, Chart, Trending -->
+        <div class="panel compact">
+            <h2>📝 Live Events</h2>
+            <div class="events-feed" id="eventsFeed">
+                <div style="text-align: center; color: #94a3b8; margin-top: 50px;">
+                    Waiting for live events...
+                </div>
+            </div>
+        </div>
+
+        <div class="panel chart compact">
+            <h2>📈 Edit Velocity</h2>
+            <canvas id="velocityChart" width="400" height="130"></canvas>
+        </div>
+
+        <div class="panel compact">
+            <h2>🔥 Trending Pages</h2>
+            <div class="trending-list" id="trendingList">
+                <div style="text-align: center; color: #94a3b8; margin-top: 50px;">
+                    Detecting trending topics...
+                </div>
+            </div>
+            
+            <!-- Wiki Activity in same panel -->
+            <div style="margin-top: 15px; border-top: 1px solid #475569; padding-top: 10px;">
+                <h3 style="color: #e2e8f0; font-size: 14px; margin-bottom: 8px;">📊 Wiki Stats</h3>
+                <div class="wiki-list" id="wikiList">
+                    <div style="text-align: center; color: #94a3b8; margin-top: 15px;">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        let velocityChart;
+        let trendingTopics = new Map();
+        let recentAlerts = [];
+        let editVelocityData = [];
+        let worldMap;
+        let countryEditCounts = new Map();
+
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('timestamp').textContent = 
+                now.toTimeString().split(' ')[0];
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/live`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket connected');
+                document.getElementById('connectionStatus').textContent = 'Connected';
+                document.getElementById('connectionStatus').className = 'connection-status connected';
+                reconnectAttempts = 0;
+            };
+            
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'stats') {
+                    updateStats(message.data);
+                } else if (message.type === 'events') {
+                    updateEvents(message.data);
+                }
+            };
+            
+            ws.onclose = function() {
+                console.log('WebSocket disconnected');
+                document.getElementById('connectionStatus').textContent = 'Disconnected';
+                document.getElementById('connectionStatus').className = 'connection-status';
+                
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    setTimeout(() => {
+                        reconnectAttempts++;
+                        console.log(`Reconnecting... Attempt ${reconnectAttempts}`);
+                        connectWebSocket();
+                    }, 2000);
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function updateStats(stats) {
+            document.getElementById('totalEvents').textContent = stats.total_events || 0;
+            document.getElementById('eventsPerMin').textContent = Math.round(stats.events_per_minute || 0);
+            document.getElementById('botPercentage').textContent = `${stats.bot_percentage || 0}%`;
+            document.getElementById('avgEditSize').textContent = stats.avg_edit_size || 0;
+            
+            // Update wiki list
+            const wikiList = document.getElementById('wikiList');
+            if (stats.top_wikis && stats.top_wikis.length > 0) {
+                wikiList.innerHTML = stats.top_wikis.map(wiki => 
+                    `<div class="wiki-item">
+                        <span class="wiki-name">${wiki.name}</span>
+                        <span class="wiki-count">${wiki.count}</span>
+                    </div>`
+                ).join('');
+            }
+        }
+
+        // Wikipedia language to country mapping (expanded)
+        const wikiToCountry = {
+            'enwiki': 'United States',
+            'dewiki': 'Germany', 
+            'frwiki': 'France',
+            'eswiki': 'Spain',
+            'itwiki': 'Italy',
+            'ruwiki': 'Russia',
+            'jawiki': 'Japan',
+            'zhwiki': 'China',
+            'ptwiki': 'Brazil',
+            'arwiki': 'Egypt',
+            'hewiki': 'Israel',
+            'hiwiki': 'India',
+            'kowiki': 'South Korea',
+            'thwiki': 'Thailand',
+            'viwiki': 'Vietnam',
+            'idwiki': 'Indonesia',
+            'mswiki': 'Malaysia',
+            'trwiki': 'Turkey',
+            'plwiki': 'Poland',
+            'nlwiki': 'Netherlands',
+            'svwiki': 'Sweden',
+            'nowiki': 'Norway',
+            'dawiki': 'Denmark',
+            'fiwiki': 'Finland',
+            'ukwiki': 'Ukraine',
+            'cswiki': 'Czech Republic',
+            'huwiki': 'Hungary',
+            'rowiki': 'Romania',
+            'bgwiki': 'Bulgaria',
+            'hrwiki': 'Croatia',
+            'srwiki': 'Serbia',
+            'slwiki': 'Slovenia',
+            'skwiki': 'Slovakia',
+            'ltwiki': 'Lithuania',
+            'lvwiki': 'Latvia',
+            'etwiki': 'Estonia',
+            'elwiki': 'Greece',
+            'mkwiki': 'North Macedonia',
+            'bewiki': 'Belarus',
+            'azwiki': 'Azerbaijan',
+            'kawiki': 'Georgia',
+            'hywiki': 'Armenia',
+            'fawiki': 'Iran',
+            'urwiki': 'Pakistan',
+            'bnwiki': 'Bangladesh',
+            'mywiki': 'Myanmar',
+            'kkwiki': 'Kazakhstan',
+            'uzwiki': 'Uzbekistan',
+            'kywiki': 'Kyrgyzstan',
+            'mnwiki': 'Mongolia',
+            'commonswiki': 'Global', // Wikimedia Commons
+            'wikidatawiki': 'Global', // Wikidata
+            'metawiki': 'Global', // Meta-Wiki
+            'mediawikiwiki': 'Global' // MediaWiki
+        };
+
+        function initMap() {
+            try {
+                console.log('Initializing world map...');
+                
+                // Check if Leaflet is loaded
+                if (typeof L === 'undefined') {
+                    console.error('Leaflet library not loaded!');
+                    document.getElementById('worldMap').innerHTML = '<div style="color: red; padding: 20px;">Map loading failed - CDN issue</div>';
+                    return;
+                }
+                
+                // Start more zoomed in on Europe/North America where most activity is
+                worldMap = L.map('worldMap').setView([45, 10], 3);
+                
+                // Dark theme tile layer
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '©OpenStreetMap, ©CartoDB',
+                    subdomains: 'abcd',
+                    maxZoom: 10,
+                    minZoom: 2
+                }).addTo(worldMap);
+                
+                console.log('World map initialized successfully!');
+            } catch (error) {
+                console.error('Map initialization error:', error);
+                document.getElementById('worldMap').innerHTML = '<div style="color: red; padding: 20px;">Map initialization failed: ' + error.message + '</div>';
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('velocityChart').getContext('2d');
+            velocityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Edits per Minute',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: {
+                                    minute: 'HH:mm'
+                                }
+                            },
+                            grid: { color: '#475569' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#475569' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            const now = new Date();
+            const currentMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+            
+            // Count events in the last minute
+            const recentEventCount = editVelocityData.filter(time => 
+                now - time < 60000
+            ).length;
+            
+            velocityChart.data.labels.push(currentMinute);
+            velocityChart.data.datasets[0].data.push(recentEventCount);
+            
+            // Keep only last 20 data points
+            if (velocityChart.data.labels.length > 20) {
+                velocityChart.data.labels.shift();
+                velocityChart.data.datasets[0].data.shift();
+            }
+            
+            velocityChart.update('none');
+        }
+
+        function detectTrending(event) {
+            const title = event.title;
+            if (!title) return;
+            
+            const now = Date.now();
+            if (!trendingTopics.has(title)) {
+                trendingTopics.set(title, { count: 0, lastSeen: now, wiki: event.wiki });
+            }
+            
+            const trending = trendingTopics.get(title);
+            trending.count++;
+            trending.lastSeen = now;
+            
+            // If page has 3+ edits in 5 minutes, mark as trending
+            if (trending.count >= 3 && now - trending.lastSeen < 300000) {
+                addTrendingItem(title, trending.count, event.wiki);
+            }
+            
+            // Clean old trending data
+            for (const [key, value] of trendingTopics.entries()) {
+                if (now - value.lastSeen > 600000) { // 10 minutes
+                    trendingTopics.delete(key);
+                }
+            }
+        }
+
+        function checkForAlerts(event) {
+            const delta = Math.abs(event.delta || 0);
+            const title = event.title || 'Unknown Page';
+            
+            // Large edit alert (>5000 characters)
+            if (delta > 5000) {
+                addAlert('warning', '⚠️', `Large edit detected: ${delta} characters on "${title}"`);
+            }
+            
+            // Massive edit alert (>20000 characters)
+            if (delta > 20000) {
+                addAlert('critical', '🚨', `MASSIVE edit detected: ${delta} characters on "${title}" - Potential vandalism!`);
+            }
+            
+            // Suspicious pattern: Large deletion by new/anonymous user
+            if (delta > 1000 && event.delta < 0 && (event.user === 'Anonymous' || !event.user)) {
+                addAlert('warning', '⚠️', `Suspicious large deletion by anonymous user on "${title}"`);
+            }
+        }
+
+        function addAlert(type, icon, message) {
+            const alertsContainer = document.getElementById('alertsContainer');
+            
+            // Remove old alerts (keep only last 5)
+            while (alertsContainer.children.length >= 5) {
+                alertsContainer.removeChild(alertsContainer.lastChild);
+            }
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert-banner ${type}`;
+            alertDiv.innerHTML = `
+                <span class="alert-icon">${icon}</span>
+                <span>${message}</span>
+                <span style="margin-left: auto; font-size: 11px;">${new Date().toLocaleTimeString()}</span>
+            `;
+            
+            alertsContainer.insertBefore(alertDiv, alertsContainer.firstChild);
+            
+            // Remove alert after 30 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 30000);
+        }
+
+        function addTrendingItem(title, count, wiki) {
+            const trendingList = document.getElementById('trendingList');
+            
+            // Check if already exists
+            const existingItems = Array.from(trendingList.children);
+            const existing = existingItems.find(item => 
+                item.querySelector('.trending-title')?.textContent === title
+            );
+            
+            if (existing) {
+                // Update count
+                existing.querySelector('.trending-meta').textContent = `${count} edits in ${wiki}`;
+                return;
+            }
+            
+            // Remove placeholder
+            if (trendingList.children.length === 1 && trendingList.children[0].textContent.includes('Detecting')) {
+                trendingList.innerHTML = '';
+            }
+            
+            const trendingDiv = document.createElement('div');
+            trendingDiv.className = 'trending-item';
+            trendingDiv.innerHTML = `
+                <div class="trending-title">${title}</div>
+                <div class="trending-meta">${count} edits in ${wiki}</div>
+            `;
+            
+            trendingList.insertBefore(trendingDiv, trendingList.firstChild);
+            
+            // Keep only last 10 trending items
+            while (trendingList.children.length > 10) {
+                trendingList.removeChild(trendingList.lastChild);
+            }
+        }
+
+        // Country coordinates for placing markers (expanded)
+        const countryCoords = {
+            'United States': [39.8283, -98.5795],
+            'Germany': [51.1657, 10.4515],
+            'France': [46.6034, 1.8883],
+            'Spain': [40.4637, -3.7492],
+            'Italy': [41.8719, 12.5674],
+            'Russia': [61.5240, 105.3188],
+            'Japan': [36.2048, 138.2529],
+            'China': [35.8617, 104.1954],
+            'Brazil': [-14.2350, -51.9253],
+            'Egypt': [26.0975, 30.0444],
+            'Israel': [31.0461, 34.8516],
+            'India': [20.5937, 78.9629],
+            'South Korea': [35.9078, 127.7669],
+            'Thailand': [15.8700, 100.9925],
+            'Vietnam': [14.0583, 108.2772],
+            'Indonesia': [-0.7893, 113.9213],
+            'Malaysia': [4.2105, 101.9758],
+            'Turkey': [38.9637, 35.2433],
+            'Poland': [51.9194, 19.1451],
+            'Netherlands': [52.1326, 5.2913],
+            'Sweden': [60.1282, 18.6435],
+            'Norway': [60.4720, 8.4689],
+            'Denmark': [56.2639, 9.5018],
+            'Finland': [61.9241, 25.7482],
+            'Ukraine': [48.3794, 31.1656],
+            'Czech Republic': [49.8175, 15.4730],
+            'Hungary': [47.1625, 19.5033],
+            'Romania': [45.9432, 24.9668],
+            'Bulgaria': [42.7339, 25.4858],
+            'Croatia': [45.1000, 15.2000],
+            'Serbia': [44.0165, 21.0059],
+            'Slovenia': [46.1512, 14.9955],
+            'Slovakia': [48.6690, 19.6990],
+            'Lithuania': [55.1694, 23.8813],
+            'Latvia': [56.8796, 24.6032],
+            'Estonia': [58.5953, 25.0136],
+            'Greece': [39.0742, 21.8243],
+            'North Macedonia': [41.6086, 21.7453],
+            'Belarus': [53.7098, 27.9534],
+            'Azerbaijan': [40.1431, 47.5769],
+            'Georgia': [42.3154, 43.3569],
+            'Armenia': [40.0691, 45.0382],
+            'Iran': [32.4279, 53.6880],
+            'Pakistan': [30.3753, 69.3451],
+            'Bangladesh': [23.6850, 90.3563],
+            'Myanmar': [21.9162, 95.9560],
+            'Kazakhstan': [48.0196, 66.9237],
+            'Uzbekistan': [41.3775, 64.5853],
+            'Kyrgyzstan': [41.2044, 74.7661],
+            'Mongolia': [46.8625, 103.8467],
+            'Global': [0, 0] // Center of the world for global wikis
+        };
+
+        function updateMap(event) {
+            if (!worldMap) {
+                return;
+            }
+            
+            const wiki = event.wiki;
+            const country = wikiToCountry[wiki];
+            
+            if (!country || !countryCoords[country]) {
+                return;
+            }
+            
+            const coords = countryCoords[country];
+            const delta = event.delta || 0;
+            const title = event.title || 'Unknown Page';
+            const user = event.user || 'Anonymous';
+            
+            // Add small random offset so multiple edits from same country don't stack
+            const offsetLat = coords[0] + (Math.random() - 0.5) * 4;
+            const offsetLng = coords[1] + (Math.random() - 0.5) * 6;
+            
+            // Size based on edit size
+            let markerSize = 4;
+            if (Math.abs(delta) > 1000) markerSize = 6;
+            if (Math.abs(delta) > 5000) markerSize = 8;
+            
+            // Color based on edit type
+            let fillColor = '#3b82f6'; // Default blue for normal edits
+            if (Math.abs(delta) > 5000) fillColor = '#ef4444'; // Red for large edits
+            else if (delta < -500) fillColor = '#f59e0b'; // Orange for deletions
+            else if (event.bot) fillColor = '#6b7280'; // Gray for bots
+            else if (wiki === 'enwiki') fillColor = '#10b981'; // Green for English
+            
+            // Create individual edit marker
+            const marker = L.circleMarker([offsetLat, offsetLng], {
+                radius: markerSize,
+                fillColor: fillColor,
+                color: '#ffffff',
+                weight: 1,
+                opacity: 0.8,
+                fillOpacity: 0.7
+            }).addTo(worldMap);
+            
+            // Popup with actual edit info
+            marker.bindPopup(`
+                <strong>${title}</strong><br>
+                <strong>User:</strong> ${user}<br>
+                <strong>Wiki:</strong> ${wiki}<br>
+                <strong>Size:</strong> ${delta > 0 ? '+' : ''}${delta} chars<br>
+                <strong>Time:</strong> ${new Date().toLocaleTimeString()}
+            `);
+            
+            // Remove marker after 30 seconds to prevent map clutter
+            setTimeout(() => {
+                if (worldMap.hasLayer(marker)) {
+                    worldMap.removeLayer(marker);
+                }
+            }, 30000);
+            
+            // Limit total markers on map
+            const allMarkers = [];
+            worldMap.eachLayer(layer => {
+                if (layer instanceof L.CircleMarker) {
+                    allMarkers.push(layer);
+                }
+            });
+            
+            if (allMarkers.length > 100) {
+                const oldestMarker = allMarkers[0];
+                worldMap.removeLayer(oldestMarker);
+            }
+        }
+
+        function updateEvents(events) {
+            const feed = document.getElementById('eventsFeed');
+            
+            events.forEach(event => {
+                // Add to velocity tracking
+                editVelocityData.push(new Date());
+                
+                // Update world map
+                updateMap(event);
+                
+                // Check for alerts and trending
+                detectTrending(event);
+                checkForAlerts(event);
+                
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event-item';
+                
+                const title = event.title || 'Unknown Page';
+                const user = event.user || 'Anonymous';
+                const wiki = event.wiki || 'unknown';
+                const delta = event.delta || 0;
+                const isBot = event.bot;
+                
+                eventDiv.innerHTML = `
+                    <div class="event-title">${title}</div>
+                    <div class="event-meta">
+                        <span class="event-wiki">${wiki}</span>
+                        <span class="event-user">${user} ${isBot ? '<span class="bot-badge">BOT</span>' : ''}</span>
+                        <span class="event-size">${delta > 0 ? '+' : ''}${delta}</span>
+                    </div>
+                `;
+                
+                feed.insertBefore(eventDiv, feed.firstChild);
+                
+                // Keep only last 20 events
+                while (feed.children.length > 20) {
+                    feed.removeChild(feed.lastChild);
+                }
+            });
+        }
+
+        // Initialize
+        updateTimestamp();
+        setInterval(updateTimestamp, 1000);
+        
+        // Initialize chart and map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            initMap();
+            setInterval(updateChart, 10000); // Update chart every 10 seconds
+        });
+        
+        connectWebSocket();
+    </script>
+</body>
+</html>

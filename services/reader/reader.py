@@ -11,9 +11,8 @@ load_dotenv()
 # Endpoint for Wikimedia RecentChanges SSE stream
 WIKIMEDIA_URL = "https://stream.wikimedia.org/v2/stream/recentchange"
 
-project_root = Path(__file__).resolve().parent.parent.parent
-
-base_dir = project_root / "data"
+# In container, data is always at /app/data
+base_dir = Path("/app/data")
 base_dir.mkdir(parents=True, exist_ok=True)
 file_path = base_dir / "raw.jsonl"
     
@@ -48,7 +47,7 @@ async def open_stream(session: aiohttp.ClientSession, url: str, headers: dict) -
 
     Return the aiohttp response object so caller can iterate over response.content.
     """
-    # TODO: return await session.get(url, headers=headers) 
+     
     resp = await session.get(url, headers=headers)
     if resp.status != 200:
         await resp.release()
@@ -158,7 +157,7 @@ def should_rotate(file_path: Path, max_megabytes: int, max_lines: int) -> bool:
 
     Keep it simple early; exact counting is optional.
     """
-    # TODO: check file_path.stat().st_size; optionally count lines safely
+
     try: 
         file_size = os.path.getsize(file_path)
         if file_size >= max_megabytes * 1024 * 1024: 
