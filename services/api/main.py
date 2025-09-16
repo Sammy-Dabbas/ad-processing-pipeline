@@ -10,10 +10,12 @@ app = FastAPI()
 # Routers are defined in routes/*.py
 from routes.health import router as health_router
 from routes.events import router as events_router
+from routes.ad_events import router as ad_events_router
 from routes.websocket import router as websocket_router
 
 app.include_router(health_router)
-app.include_router(events_router)
+app.include_router(events_router)  # Keep for backward compatibility
+app.include_router(ad_events_router)  # New high-performance ad events API
 app.include_router(websocket_router)
 
 # Serve static files
@@ -23,7 +25,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def root():
     """
-    Serve the telemetry dashboard
+    Serve the high-performance ad analytics dashboard
+    """
+    return FileResponse("static/ad_dashboard.html")
+
+@app.get("/wiki-dashboard")
+def wiki_dashboard():
+    """
+    Serve the legacy Wikipedia telemetry dashboard
     """
     return FileResponse("static/index.html")
 
