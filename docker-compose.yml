@@ -1,5 +1,5 @@
 services:
-  # Service 1: Reader
+  # Legacy Wikipedia services (keep for testing/comparison)
   reader:
     build: ./services/reader
     volumes:
@@ -8,8 +8,8 @@ services:
       - HEADER_USER=${HEADER_USER}
       - HEADER_EMAIL=${HEADER_EMAIL}
     restart: unless-stopped
+    profiles: ["legacy"]  # Only run with --profile legacy
 
-  # Service 2: Consumer  
   consumer:
     build: ./services/consumer
     volumes:
@@ -17,8 +17,29 @@ services:
     depends_on:
       - reader
     restart: unless-stopped
+    profiles: ["legacy"]  # Only run with --profile legacy
 
-  # Service 3: API
+  # High-performance ad event processing
+  ad-event-generator:
+    build: ./services/event_generator
+    volumes:
+      - shared_data:/app/data
+    restart: unless-stopped
+    environment:
+      - EVENTS_PER_SECOND=50000  # Configurable event rate
+
+  ad-event-consumer:
+    build: ./services/consumer
+    command: ["python", "ad_event_consumer.py"]
+    volumes:
+      - shared_data:/app/data
+    depends_on:
+      - ad-event-generator
+    restart: unless-stopped
+    environment:
+      - MAX_EVENTS_PER_SECOND=1000000  # Target processing rate
+
+  # API service for both legacy and ad events
   api:
     build: ./services/api
     volumes:
@@ -26,7 +47,7 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - consumer
+      - ad-event-consumer
     restart: unless-stopped
 
 volumes:

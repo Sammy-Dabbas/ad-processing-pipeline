@@ -210,12 +210,7 @@ async def run_consumer() -> None:
 
             if rev_id in seen_ids:
                 deduped += 1
-                continue
-
-            record = build_processed_record(event)
-            if record is None:
-                errors += 1
-                continue
+ww   continue
 
             text = serialize_jsonl(record)
             append_jsonl(current_processed_file, text)

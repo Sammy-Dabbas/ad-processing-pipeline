@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ad Event Processing Dashboard - Real-Time Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto auto auto;
+            gap: 20px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-change {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+
+        .positive { color: #27ae60; }
+        .negative { color: #e74c3c; }
+
+        .chart-container {
+            grid-column: span 2;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .large-chart {
+            grid-column: 1 / -1;
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-active { background-color: #27ae60; }
+        .status-warning { background-color: #f39c12; }
+        .status-error { background-color: #e74c3c; }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .performance-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .performance-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .performance-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .campaign-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .campaign-item {
+            background: #f8f9fa;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .campaign-name {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .campaign-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 1.1em;
+            color: #7f8c8d;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-container {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .chart-container {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                padding: 10px;
+                gap: 15px;
+            }
+            
+            .chart-container {
+                grid-column: span 1;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Ad Event Processing System</h1>
+            <p class="subtitle">Real-Time Analytics Dashboard - Processing 1M+ Events/Second</p>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metric-card">
+            <div class="metric-value" id="eventsPerSecond">0</div>
+            <div class="metric-label">Events/Second</div>
+            <div class="metric-change" id="eventsChange">Loading...</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-value" id="totalRevenue">$0</div>
+            <div class="metric-label">Revenue (Last Hour)</div>
+            <div class="metric-change" id="revenueChange">Loading...</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-value" id="avgLatency">0ms</div>
+            <div class="metric-label">Avg Latency</div>
+            <div class="metric-change" id="latencyChange">
+                <span class="status-indicator status-active"></span>System Healthy
+            </div>
+        </div>
+
+        <!-- Performance Chart -->
+        <div class="chart-container">
+            <div class="chart-title">Real-Time Event Processing</div>
+            <canvas id="performanceChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Conversion Funnel -->
+        <div class="metric-card">
+            <div class="chart-title">Conversion Funnel</div>
+            <div class="performance-grid">
+                <div class="performance-item">
+                    <div class="performance-value" id="ctrRate">0%</div>
+                    <div class="performance-label">Click-Through Rate</div>
+                </div>
+                <div class="performance-item">
+                    <div class="performance-value" id="cvrRate">0%</div>
+                    <div class="performance-label">Conversion Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Performance -->
+        <div class="chart-container">
+            <div class="chart-title">Performance by Device</div>
+            <canvas id="deviceChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- System Metrics -->
+        <div class="metric-card">
+            <div class="chart-title">System Performance</div>
+            <div class="performance-grid">
+                <div class="performance-item">
+                    <div class="performance-value" id="memoryUsage">0MB</div>
+                    <div class="performance-label">Memory Usage</div>
+                </div>
+                <div class="performance-item">
+                    <div class="performance-value" id="errorRate">0%</div>
+                    <div class="performance-label">Error Rate</div>
+                </div>
+                <div class="performance-item">
+                    <div class="performance-value" id="dedupRate">0%</div>
+                    <div class="performance-label">Dedup Rate</div>
+                </div>
+                <div class="performance-item">
+                    <div class="performance-value" id="uniqueCampaigns">0</div>
+                    <div class="performance-label">Active Campaigns</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Campaigns -->
+        <div class="chart-container large-chart">
+            <div class="chart-title">Top Performing Campaigns</div>
+            <div id="campaignsList" class="campaign-list">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading campaign data...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for charts and data
+        let performanceChart, deviceChart;
+        let performanceData = [];
+        let maxDataPoints = 50;
+        
+        // Initialize charts
+        function initializeCharts() {
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Events/Second',
+                        data: [],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }, {
+                        label: 'Latency (ms)',
+                        data: [],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        yAxisID: 'latency'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Events/Second'
+                            }
+                        },
+                        latency: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Latency (ms)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    animation: {
+                        duration: 0
+                    }
+                }
+            });
+
+            // Device Performance Chart
+            const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+            deviceChart = new Chart(deviceCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Mobile', 'Desktop', 'Tablet'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: [
+                            '#3498db',
+                            '#2ecc71',
+                            '#f39c12'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Format numbers for display
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(1) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        // Update performance metrics
+        async function updatePerformanceMetrics() {
+            try {
+                const response = await fetch('/ad-events/analytics/performance');
+                const data = await response.json();
+
+                // Update main metrics
+                document.getElementById('eventsPerSecond').textContent = formatNumber(data.events_per_second || 0);
+                document.getElementById('avgLatency').textContent = `${data.avg_latency_ms || 0}ms`;
+                document.getElementById('memoryUsage').textContent = `${data.memory_usage_mb || 0}MB`;
+                document.getElementById('errorRate').textContent = `${data.error_rate || 0}%`;
+                document.getElementById('dedupRate').textContent = `${data.deduplication_rate || 0}%`;
+                document.getElementById('uniqueCampaigns').textContent = formatNumber(data.unique_campaigns || 0);
+
+                // Update performance chart
+                const currentTime = new Date().toLocaleTimeString();
+                performanceData.push({
+                    time: currentTime,
+                    eventsPerSecond: data.events_per_second || 0,
+                    latency: data.avg_latency_ms || 0
+                });
+
+                if (performanceData.length > maxDataPoints) {
+                    performanceData.shift();
+                }
+
+                performanceChart.data.labels = performanceData.map(d => d.time);
+                performanceChart.data.datasets[0].data = performanceData.map(d => d.eventsPerSecond);
+                performanceChart.data.datasets[1].data = performanceData.map(d => d.latency);
+                performanceChart.update('none');
+
+            } catch (error) {
+                console.error('Error updating performance metrics:', error);
+            }
+        }
+
+        // Update real-time analytics
+        async function updateRealTimeAnalytics() {
+            try {
+                const response = await fetch('/ad-events/analytics/real-time');
+                const data = await response.json();
+
+                // Update revenue and conversion metrics
+                document.getElementById('totalRevenue').textContent = formatCurrency(data.revenue_last_hour || 0);
+                document.getElementById('ctrRate').textContent = `${data.conversion_rates?.overall_ctr || 0}%`;
+                document.getElementById('cvrRate').textContent = `${data.conversion_rates?.overall_cvr || 0}%`;
+
+                // Update device performance chart
+                const deviceData = data.performance_by_device || {};
+                const mobileImpressions = deviceData.mobile?.impressions || 0;
+                const desktopImpressions = deviceData.desktop?.impressions || 0;
+                const tabletImpressions = deviceData.tablet?.impressions || 0;
+
+                deviceChart.data.datasets[0].data = [mobileImpressions, desktopImpressions, tabletImpressions];
+                deviceChart.update('none');
+
+                // Update top campaigns
+                updateTopCampaigns(data.top_campaigns || []);
+
+            } catch (error) {
+                console.error('Error updating real-time analytics:', error);
+            }
+        }
+
+        // Update top campaigns list
+        function updateTopCampaigns(campaigns) {
+            const campaignsList = document.getElementById('campaignsList');
+            
+            if (campaigns.length === 0) {
+                campaignsList.innerHTML = '<div class="loading">No campaign data available</div>';
+                return;
+            }
+
+            const campaignsHtml = campaigns.map(campaign => `
+                <div class="campaign-item">
+                    <div class="campaign-name">${campaign.campaign_id}</div>
+                    <div class="campaign-stats">
+                        <span>Revenue: ${formatCurrency(campaign.revenue)}</span>
+                        <span>CTR: ${campaign.ctr}%</span>
+                        <span>CVR: ${campaign.cvr}%</span>
+                        <span>Impressions: ${formatNumber(campaign.impressions)}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            campaignsList.innerHTML = campaignsHtml;
+        }
+
+        // Initialize dashboard
+        function initializeDashboard() {
+            initializeCharts();
+            
+            // Initial data load
+            updatePerformanceMetrics();
+            updateRealTimeAnalytics();
+            
+            // Set up real-time updates
+            setInterval(updatePerformanceMetrics, 2000);  // Update every 2 seconds
+            setInterval(updateRealTimeAnalytics, 5000);   // Update every 5 seconds
+        }
+
+        // Start dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+</body>
+</html>
