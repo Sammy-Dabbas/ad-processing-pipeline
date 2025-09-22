@@ -1,6 +1,7 @@
 """
 Ad Event Generator - Simulates high-volume ad events for testing
 Generates impression, click, and conversion events at scale
+Supports both file-based and AWS Kinesis data sources
 """
 
 import asyncio
@@ -8,11 +9,17 @@ import json
 import random
 import time
 import uuid
+import sys
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from infrastructure.data_sources import DataSourceFactory
 
 
 class EventType(str, Enum):
@@ -95,9 +102,15 @@ class AdEvent:
 class AdEventGenerator:
     """High-performance ad event generator for load testing"""
     
-    def __init__(self, events_per_second: int = 10000):
+    def __init__(self, events_per_second: int = 10000, data_source=None):
         self.events_per_second = events_per_second
         self.batch_size = min(1000, events_per_second // 10)  # Process in batches
+        
+        # Initialize data source
+        if data_source:
+            self.data_source = data_source
+        else:
+            self.data_source = DataSourceFactory.create_from_env()
         
         # In container, data is always at /app/data
         self.base_dir = Path("/app/data")
@@ -422,11 +435,18 @@ class AdEventGenerator:
                         conversion = self.generate_conversion_event(base_click)
                         batch_events.append(conversion)
             
-            # Write batch to file
+            # Write batch to data source (file or Kinesis)
+            event_dicts = []
             for event in batch_events:
-                json_line = self.serialize_event(event)
-                self.append_to_file(json_line)
-                events_generated += 1
+                event_dict = asdict(event)
+                event_dicts.append(event_dict)
+            
+            # Use batch write for better performance
+            successful_writes = await self.data_source.write_events_batch(event_dicts)
+            events_generated += successful_writes
+            
+            if successful_writes != len(event_dicts):
+                print(f"⚠️  Warning: Only {successful_writes}/{len(event_dicts)} events written successfully")
             
             # Rate limiting and performance metrics
             batch_duration = time.time() - batch_start_time

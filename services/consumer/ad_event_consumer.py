@@ -2,11 +2,13 @@
 High-Performance Ad Event Consumer
 Processes millions of ad events per second with deduplication and enrichment
 Optimized for <20ms latency and high throughput
+Supports both file-based and AWS Kinesis data sources
 """
 
 import asyncio
 import json
 import os
+import sys
 import time
 import hashlib
 from typing import AsyncIterator, Optional, Dict, Set
@@ -14,6 +16,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict, deque
 from dataclasses import dataclass
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent))
+from infrastructure.data_sources import DataSourceFactory
 
 
 # Performance-optimized consumer for ad event processing
@@ -47,9 +53,36 @@ class ProcessingMetrics:
 class HighPerformanceAdConsumer:
     """Optimized consumer for processing millions of ad events per second"""
     
-    def __init__(self, max_events_per_second: int = 1_000_000):
+    def __init__(self, max_events_per_second: int = 1_000_000, input_source=None, output_source=None):
         self.max_events_per_second = max_events_per_second
         self.batch_size = min(10000, max_events_per_second // 100)  # Larger batches
+        
+        # Initialize data sources
+        if input_source:
+            self.input_source = input_source
+        else:
+            # Create input source from environment (for reading events)
+            input_config = {
+                'type': 'kinesis' if os.getenv('USE_KINESIS', 'false').lower() == 'true' else 'file',
+                'stream_name': os.getenv('KINESIS_INPUT_STREAM', 'ad-events-input-stream'),
+                'file_path': os.getenv('INPUT_FILE_PATH', '/app/data/raw_ad_events.jsonl'),
+                'region': os.getenv('AWS_REGION', 'us-east-1'),
+                'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
+            }
+            self.input_source = DataSourceFactory.create_data_source(input_config)
+        
+        if output_source:
+            self.output_source = output_source
+        else:
+            # Create output source (for writing processed events)
+            output_config = {
+                'type': 'kinesis' if os.getenv('USE_KINESIS_OUTPUT', 'false').lower() == 'true' else 'file',
+                'stream_name': os.getenv('KINESIS_OUTPUT_STREAM', 'ad-events-processed-stream'),
+                'file_path': os.getenv('OUTPUT_FILE_PATH', '/app/data/processed_ad_events.jsonl'),
+                'region': os.getenv('AWS_REGION', 'us-east-1'),
+                'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
+            }
+            self.output_source = DataSourceFactory.create_data_source(output_config)
         
         # Performance tracking
         self.seen_ids: Set[str] = set()
