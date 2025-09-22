@@ -7,10 +7,11 @@ services:
     ports:
       - "4566:4566"
     environment:
-      - SERVICES=kinesis,dynamodb,cloudwatch
+      - SERVICES=kinesis,dynamodb,cloudwatch,dax
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock
+      - DYNAMODB_ERROR_PROBABILITY=0.0
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
       - localstack_data:/tmp/localstack
@@ -38,7 +39,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       - EVENTS_PER_SECOND=10000
 
-  # Ad event processing service (using LocalStack Kinesis)
+  # Ad event processing service (using LocalStack Kinesis + DynamoDB)
   ad-event-consumer:
     build: ./services/consumer
     command: ["python", "ad_event_consumer.py"]
@@ -50,16 +51,16 @@ services:
     restart: unless-stopped
     environment:
       - USE_KINESIS=true
-      - USE_KINESIS_OUTPUT=false  # Output to file for easy viewing
+      - USE_DYNAMODB=true  # Enable DynamoDB output
       - KINESIS_INPUT_STREAM=ad-events-stream
       - KINESIS_ENDPOINT_URL=http://localstack:4566
+      - DYNAMODB_ENDPOINT_URL=http://localstack:4566
       - AWS_REGION=us-east-1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - MAX_EVENTS_PER_SECOND=50000
-      - OUTPUT_FILE_PATH=/app/data/processed_kinesis_events.jsonl
 
-  # REST API service
+  # REST API service with DynamoDB analytics
   api:
     build: ./services/api
     volumes:
@@ -72,6 +73,10 @@ services:
     environment:
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
+      - DYNAMODB_ENDPOINT_URL=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

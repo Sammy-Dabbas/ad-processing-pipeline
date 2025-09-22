@@ -75,13 +75,29 @@ class HighPerformanceAdConsumer:
             self.output_source = output_source
         else:
             # Create output source (for writing processed events)
-            output_config = {
-                'type': 'kinesis' if os.getenv('USE_KINESIS_OUTPUT', 'false').lower() == 'true' else 'file',
-                'stream_name': os.getenv('KINESIS_OUTPUT_STREAM', 'ad-events-processed-stream'),
-                'file_path': os.getenv('OUTPUT_FILE_PATH', '/app/data/processed_ad_events.jsonl'),
-                'region': os.getenv('AWS_REGION', 'us-east-1'),
-                'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
-            }
+            use_dynamodb = os.getenv('USE_DYNAMODB', 'false').lower() == 'true'
+            use_kinesis = os.getenv('USE_KINESIS_OUTPUT', 'false').lower() == 'true'
+            
+            if use_dynamodb:
+                output_config = {
+                    'type': 'dynamodb',
+                    'region': os.getenv('AWS_REGION', 'us-east-1'),
+                    'endpoint_url': os.getenv('DYNAMODB_ENDPOINT_URL'),
+                    'use_dax': os.getenv('USE_DAX', 'false').lower() == 'true'
+                }
+            elif use_kinesis:
+                output_config = {
+                    'type': 'kinesis',
+                    'stream_name': os.getenv('KINESIS_OUTPUT_STREAM', 'ad-events-processed-stream'),
+                    'region': os.getenv('AWS_REGION', 'us-east-1'),
+                    'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
+                }
+            else:
+                output_config = {
+                    'type': 'file',
+                    'file_path': os.getenv('OUTPUT_FILE_PATH', '/app/data/processed_ad_events.jsonl')
+                }
+            
             self.output_source = DataSourceFactory.create_data_source(output_config)
         
         # Performance tracking
