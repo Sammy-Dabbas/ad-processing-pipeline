@@ -1,31 +1,98 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # Virtual environments
-.venv/
+.env
+.venv
+env/
 venv/
 ENV/
-env/
+env.bak/
+venv.bak/
+*/venv/
 
-# Environment variables
-.env
-*.env
-
-# OS / Editors
-.DS_Store
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Local data (keep folder, ignore contents)
-data/**
-!data/.gitkeep
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Data files (large)
+*.jsonl
+*.json
+*.csv
+*.log
+data/
+ad_event_data/
+test_data/
+realistic_perf_test/
+
+# Docker
+.dockerignore
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Environment variables
+.env.local
+.env.production
+
+# Performance test results
+performance_results/
+benchmarks/
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Redis dumps
+dump.rdb
 
 # Logs
 *.log
-
-# Python packaging (optional)
-build/
-dist/
-*.egg-info/
+logs/
