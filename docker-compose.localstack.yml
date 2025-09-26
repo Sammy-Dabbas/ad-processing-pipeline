@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # LocalStack for local AWS testing
+  localstack:
+    image: localstack/localstack:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=kinesis,dynamodb,cloudwatch
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - localstack_data:/tmp/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Ad event generation service (using LocalStack Kinesis)
+  ad-event-generator:
+    build: ./services/event_generator
+    volumes:
+      - ad_data:/app/data
+    depends_on:
+      localstack:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      - USE_KINESIS=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - KINESIS_ENDPOINT_URL=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - EVENTS_PER_SECOND=10000
+
+  # Ad event processing service (using LocalStack Kinesis)
+  ad-event-consumer:
+    build: ./services/consumer
+    command: ["python", "ad_event_consumer.py"]
+    volumes:
+      - ad_data:/app/data
+    depends_on:
+      - localstack
+      - ad-event-generator
+    restart: unless-stopped
+    environment:
+      - USE_KINESIS=true
+      - USE_KINESIS_OUTPUT=false  # Output to file for easy viewing
+      - KINESIS_INPUT_STREAM=ad-events-stream
+      - KINESIS_ENDPOINT_URL=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - MAX_EVENTS_PER_SECOND=50000
+      - OUTPUT_FILE_PATH=/app/data/processed_kinesis_events.jsonl
+
+  # REST API service
+  api:
+    build: ./services/api
+    volumes:
+      - ad_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ad-event-consumer
+    restart: unless-stopped
+    environment:
+      - DATA_DIR=/app/data
+      - LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ad_data:
+  localstack_data:
