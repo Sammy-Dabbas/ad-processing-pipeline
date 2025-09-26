@@ -15,6 +15,9 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 import logging
 
+# Import DynamoDB client
+from .dynamodb_client import DynamoDBDataSource
+
 logger = logging.getLogger(__name__)
 
 
@@ -315,6 +318,12 @@ class DataSourceFactory:
                 stream_name=config['stream_name'],
                 region=config.get('region', 'us-east-1'),
                 endpoint_url=config.get('endpoint_url')  # For LocalStack
+            )
+        elif source_type == 'dynamodb':
+            return DynamoDBDataSource(
+                region=config.get('region', 'us-east-1'),
+                endpoint_url=config.get('endpoint_url'),  # For LocalStack
+                use_dax=config.get('use_dax', False)
             )
         elif source_type == 'file':
             return FileDataSource(Path(config['file_path']))

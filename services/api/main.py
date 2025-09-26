@@ -12,10 +12,12 @@ app = FastAPI(
 # Import route modules
 from routes.health import router as health_router
 from routes.ad_events import router as ad_events_router
+from routes.analytics import router as analytics_router
 
 # Register routers
 app.include_router(health_router)
 app.include_router(ad_events_router)
+app.include_router(analytics_router)
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
