@@ -93,7 +93,9 @@ class AdEventAnalytics:
             event_type = event.get("event_type", "unknown")
             campaign_id = event.get("campaign_id", "unknown")
             device_type = event.get("device_type", "unknown")
-            revenue = event.get("revenue_usd", 0.0) + event.get("conversion_value_usd", 0.0)
+            revenue_usd = event.get("revenue_usd") or 0.0
+            conversion_value_usd = event.get("conversion_value_usd") or 0.0
+            revenue = revenue_usd + conversion_value_usd
             
             # Last hour metrics
             if event_time >= hour_ago:
@@ -327,7 +329,9 @@ def get_hourly_trends(hours_back: int = Query(24, ge=1, le=168)) -> Dict:
         # Get hour of day
         hour = datetime.fromtimestamp(event_time / 1000, tz=timezone.utc).hour
         event_type = event.get("event_type", "unknown")
-        revenue = event.get("revenue_usd", 0.0) + event.get("conversion_value_usd", 0.0)
+        revenue_usd = event.get("revenue_usd") or 0.0
+        conversion_value_usd = event.get("conversion_value_usd") or 0.0
+        revenue = revenue_usd + conversion_value_usd
         
         hourly_stats[hour]["hour"] = hour
         hourly_stats[hour][event_type + "s"] += 1

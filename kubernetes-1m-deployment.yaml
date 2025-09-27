@@ -1,0 +1,317 @@
+# Kubernetes Deployment for 1M Events/Second
+# Deploy this to EKS or any Kubernetes cluster
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ad-events-production
+
+---
+# Redis Cluster for High-Performance Deduplication
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-cluster
+  namespace: ad-events-production
+spec:
+  serviceName: "redis-cluster"
+  replicas: 30  # 30 Redis nodes for 1M ops/sec
+  selector:
+    matchLabels:
+      app: redis-cluster
+  template:
+    metadata:
+      labels:
+        app: redis-cluster
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command:
+          - redis-server
+          - /etc/redis/redis.conf
+          - --cluster-enabled
+          - yes
+          - --cluster-config-file
+          - nodes.conf
+          - --cluster-node-timeout
+          - "5000"
+          - --appendonly
+          - yes
+          - --maxmemory
+          - 4gb
+          - --maxmemory-policy
+          - allkeys-lru
+        ports:
+        - containerPort: 6379
+        - containerPort: 16379
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1"
+          limits:
+            memory: "8Gi"
+            cpu: "2"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /etc/redis
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 20Gi
+
+---
+# ConfigMap for Redis Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: ad-events-production
+data:
+  redis.conf: |
+    bind 0.0.0.0
+    protected-mode no
+    port 6379
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    daemonize no
+    pidfile /var/run/redis_6379.pid
+    loglevel notice
+    databases 16
+    save 900 1
+    save 300 10
+    save 60 10000
+    stop-writes-on-bgsave-error yes
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    dir /data
+    maxmemory 4gb
+    maxmemory-policy allkeys-lru
+
+---
+# Ad Event Consumer Deployment (High Scale)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad-event-consumer
+  namespace: ad-events-production
+spec:
+  replicas: 200  # 200 consumers for 1000 Kinesis shards (5 shards per consumer)
+  selector:
+    matchLabels:
+      app: ad-event-consumer
+  template:
+    metadata:
+      labels:
+        app: ad-event-consumer
+    spec:
+      containers:
+      - name: consumer
+        image: your-registry/ad-event-consumer:latest
+        env:
+        - name: MAX_EVENTS_PER_SECOND
+          value: "5000"
+        - name: USE_KINESIS
+          value: "true"
+        - name: USE_DYNAMODB
+          value: "true"
+        - name: KINESIS_STREAM_NAME
+          value: "ad-events-production"
+        - name: DYNAMODB_TABLE
+          value: "ad-events-processed"
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
+        - name: REDIS_CLUSTER_ENDPOINTS
+          value: "redis-cluster-0.redis-cluster:6379,redis-cluster-1.redis-cluster:6379,redis-cluster-2.redis-cluster:6379"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+
+---
+# Horizontal Pod Autoscaler for Consumers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ad-consumer-hpa
+  namespace: ad-events-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ad-event-consumer
+  minReplicas: 50
+  maxReplicas: 500
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Event Generator Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad-event-generator
+  namespace: ad-events-production
+spec:
+  replicas: 10  # 10 generators  100K events/sec = 1M events/sec
+  selector:
+    matchLabels:
+      app: ad-event-generator
+  template:
+    metadata:
+      labels:
+        app: ad-event-generator
+    spec:
+      containers:
+      - name: generator
+        image: your-registry/ad-event-generator:latest
+        env:
+        - name: EVENTS_PER_SECOND
+          value: "100000"
+        - name: USE_KINESIS
+          value: "true"
+        - name: KINESIS_STREAM_NAME
+          value: "ad-events-production"
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "1"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+
+---
+# API Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad-events-api
+  namespace: ad-events-production
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: ad-events-api
+  template:
+    metadata:
+      labels:
+        app: ad-events-api
+    spec:
+      containers:
+      - name: api
+        image: your-registry/ad-events-api:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: USE_DYNAMODB
+          value: "true"
+        - name: DYNAMODB_TABLE
+          value: "ad-events-processed"
+        - name: AWS_DEFAULT_REGION
+          value: "us-east-1"
+        - name: REDIS_CLUSTER_ENDPOINTS
+          value: "redis-cluster-0.redis-cluster:6379,redis-cluster-1.redis-cluster:6379,redis-cluster-2.redis-cluster:6379"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+
+---
+# Service for API
+apiVersion: v1
+kind: Service
+metadata:
+  name: ad-events-api-service
+  namespace: ad-events-production
+spec:
+  selector:
+    app: ad-events-api
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: LoadBalancer
+
+---
+# Service for Redis Cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cluster
+  namespace: ad-events-production
+spec:
+  clusterIP: None
+  selector:
+    app: redis-cluster
+  ports:
+  - port: 6379
+    name: redis
+  - port: 16379
+    name: cluster
+
+---
+# Monitoring with Prometheus
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: ad-events-production
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: prometheus-config

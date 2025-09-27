@@ -4,13 +4,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Copy requirements FIRST (rarely changes)
-COPY requirements.txt .
+COPY api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy code (changes frequently)
-COPY main.py .
-COPY routes/ ./routes/
-COPY static/ ./static/
+COPY api/main.py .
+COPY api/routes/ ./routes/
+COPY api/static/ ./static/
+COPY infrastructure/ ./infrastructure/
 
 # Create data directory (volume will mount here)
 RUN mkdir -p data

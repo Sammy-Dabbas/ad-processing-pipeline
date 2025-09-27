@@ -106,16 +106,29 @@ class AdEventGenerator:
         self.events_per_second = events_per_second
         self.batch_size = min(1000, events_per_second // 10)  # Process in batches
         
-        # Initialize data source
-        if data_source:
-            self.data_source = data_source
-        else:
-            self.data_source = DataSourceFactory.create_from_env()
-        
         # In container, data is always at /app/data
         self.base_dir = Path("/app/data")
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.current_file = self.base_dir / "ad_events.jsonl"
+        
+        # Initialize data source
+        if data_source:
+            self.data_source = data_source
+        else:
+            # Check if we should use Kinesis
+            if os.getenv('USE_KINESIS', 'false').lower() == 'true':
+                # Use Kinesis data source for production
+                config = {
+                    'type': 'kinesis',
+                    'stream_name': os.getenv('KINESIS_STREAM_NAME', 'ad-events-stream'),
+                    'region': os.getenv('AWS_REGION', 'us-east-1'),
+                    'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
+                }
+                self.data_source = DataSourceFactory.create_data_source(config)
+            else:
+                # Use file data source by default for local development
+                from infrastructure.data_sources import FileDataSource
+                self.data_source = FileDataSource(self.current_file)
         
         # Cache for realistic data generation
         self._init_data_pools()
@@ -372,7 +385,7 @@ class AdEventGenerator:
     async def generate_realistic_traffic(self) -> None:
         """Generate realistic ad traffic with proper funnel metrics"""
         
-        print(f" Starting ad event generation at {self.events_per_second:,} events/sec")
+        print(f"Starting ad event generation at {self.events_per_second:,} events/sec")
         
         events_generated = 0
         batch_start_time = time.time()
@@ -458,7 +471,7 @@ class AdEventGenerator:
             # Performance logging
             if events_generated % 10000 == 0:
                 actual_rate = len(batch_events) / (time.time() - batch_start_time)
-                print(f" Generated {events_generated:,} events | Rate: {actual_rate:,.0f}/sec")
+                print(f"Generated {events_generated:,} events | Rate: {actual_rate:,.0f}/sec")
             
             batch_start_time = time.time()
 
@@ -466,13 +479,15 @@ class AdEventGenerator:
 async def main():
     """Run the ad event generator"""
     # Configure for high volume testing - adjust based on your needs
-    generator = AdEventGenerator(events_per_second=50000)  # Start with 50K/sec
+    events_per_second = int(os.environ.get("EVENTS_PER_SECOND", "50000"))
+    generator = AdEventGenerator(events_per_second=events_per_second)
     
     try:
         await generator.generate_realistic_traffic()
     except KeyboardInterrupt:
-        print("\n Ad event generation stopped")
+        print("\nAd event generation stopped")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
