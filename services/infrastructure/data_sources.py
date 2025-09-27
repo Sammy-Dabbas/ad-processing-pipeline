@@ -123,13 +123,16 @@ class KinesisDataSource(DataSource):
     def _init_client(self):
         """Initialize Kinesis client with proper configuration"""
         try:
-            # Support LocalStack for local testing
+            # Configure for real AWS
             kwargs = {"region_name": self.region}
-            if self.endpoint_url:
-                kwargs["endpoint_url"] = self.endpoint_url
-                # LocalStack doesn't need real credentials
-                kwargs["aws_access_key_id"] = "test"
-                kwargs["aws_secret_access_key"] = "test"
+            
+            # Use environment variables for credentials (real AWS)
+            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+            
+            if aws_access_key and aws_secret_key:
+                kwargs["aws_access_key_id"] = aws_access_key
+                kwargs["aws_secret_access_key"] = aws_secret_key
             
             self.kinesis_client = boto3.client('kinesis', **kwargs)
             

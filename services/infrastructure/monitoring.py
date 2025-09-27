@@ -15,6 +15,7 @@ from enum import Enum
 import threading
 import psutil
 import os
+import boto3
 
 
 class AlertLevel(str, Enum):
@@ -71,29 +72,40 @@ class ProductionMonitoring:
     
     def __init__(self, namespace: str = "AdEventProcessing"):
         self.namespace = namespace
-        
+
         # Metric storage (in production, this would be CloudWatch/Prometheus)
         self.metrics: deque = deque(maxlen=10000)  # Keep last 10K metrics
         self.metric_buffers: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        
+
         # Alert definitions and states
         self.alerts: Dict[str, Alert] = {}
         self.alarm_states: Dict[str, AlarmState] = {}
-        
+
         # Callbacks for alert notifications
         self.alert_callbacks: List[Callable] = []
-        
+
         # Background monitoring thread
         self.monitoring_thread = None
         self.stop_monitoring = False
-        
+
         # Performance tracking
         self.start_time = time.time()
         self.last_metrics_flush = time.time()
-        
+
+        # CloudWatch integration
+        self.use_cloudwatch = os.getenv('USE_CLOUDWATCH', 'false').lower() == 'true'
+        self.cloudwatch_client = None
+        if self.use_cloudwatch:
+            try:
+                self.cloudwatch_client = boto3.client('cloudwatch', region_name='us-east-1')
+                self.logger.info("✅ CloudWatch integration enabled")
+            except Exception as e:
+                self.logger.warning(f"⚠️ CloudWatch setup failed: {e}")
+                self.use_cloudwatch = False
+
         # Initialize default alerts
         self._setup_default_alerts()
-        
+
         # Setup logging
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -176,12 +188,12 @@ class ProductionMonitoring:
     # METRIC COLLECTION
     # =============================================
     
-    def put_metric(self, name: str, value: float, 
+    def put_metric(self, name: str, value: float,
                    metric_type: MetricType = MetricType.GAUGE,
                    dimensions: Dict[str, str] = None,
                    unit: str = "count"):
         """Put a metric data point"""
-        
+
         metric = Metric(
             name=name,
             value=value,
@@ -190,13 +202,52 @@ class ProductionMonitoring:
             dimensions=dimensions or {},
             unit=unit
         )
-        
+
         self.metrics.append(metric)
         self.metric_buffers[name].append(metric)
-        
+
+        # Send to CloudWatch if enabled
+        if self.use_cloudwatch and self.cloudwatch_client:
+            self._send_to_cloudwatch(metric)
+
         # Check alerts for this metric
         self._check_alerts_for_metric(name, value)
-    
+
+    def _send_to_cloudwatch(self, metric: Metric):
+        """Send metric to AWS CloudWatch"""
+        try:
+            # Convert dimensions to CloudWatch format
+            dimensions = [
+                {'Name': k, 'Value': v} for k, v in metric.dimensions.items()
+            ]
+
+            # Map unit names to CloudWatch units
+            unit_map = {
+                "count": "Count",
+                "percent": "Percent",
+                "ms": "Milliseconds",
+                "count/sec": "Count/Second",
+                "usd": "None",
+                "usd/hour": "None",
+                "gb": "Gigabytes",
+                "bytes": "Bytes"
+            }
+            cw_unit = unit_map.get(metric.unit, "Count")
+
+            self.cloudwatch_client.put_metric_data(
+                Namespace=self.namespace,
+                MetricData=[{
+                    'MetricName': metric.name,
+                    'Value': metric.value,
+                    'Unit': cw_unit,
+                    'Timestamp': metric.timestamp,
+                    'Dimensions': dimensions
+                }]
+            )
+        except Exception as e:
+            # Don't fail the application if CloudWatch fails
+            self.logger.debug(f"CloudWatch metric send failed: {e}")
+
     def put_custom_metric(self, name: str, value: float, **dimensions):
         """Convenience method for custom metrics"""
         self.put_metric(name, value, MetricType.GAUGE, dimensions)

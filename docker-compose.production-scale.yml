@@ -1,0 +1,172 @@
+version: '3.8'
+
+# Production Scale Docker Compose for 1M Events/Second
+# Use this for high-throughput testing and production deployment
+
+services:
+
+  # Redis Cluster Coordinator (we'll need multiple Redis instances)
+  redis-cluster-node-1:
+    image: redis:7-alpine
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --port 7000
+    ports:
+      - "7000:7000"
+    volumes:
+      - ./data/redis-cluster/node-1:/data
+    restart: unless-stopped
+
+  redis-cluster-node-2:
+    image: redis:7-alpine
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --port 7001
+    ports:
+      - "7001:7001"
+    volumes:
+      - ./data/redis-cluster/node-2:/data
+    restart: unless-stopped
+
+  redis-cluster-node-3:
+    image: redis:7-alpine
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --port 7002
+    ports:
+      - "7002:7002"
+    volumes:
+      - ./data/redis-cluster/node-3:/data
+    restart: unless-stopped
+
+  # High-throughput event generator (multiple instances)
+  ad-event-generator-1:
+    build:
+      context: ./services
+      dockerfile: event_generator/Dockerfile
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - EVENTS_PER_SECOND=100000  # 100K per generator
+      - USE_KINESIS=true
+      - KINESIS_STREAM_NAME=ad-events-production
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REDIS_URL=redis://redis-cluster-node-1:7000
+      - GENERATOR_ID=generator-1
+
+  ad-event-generator-2:
+    build:
+      context: ./services
+      dockerfile: event_generator/Dockerfile
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - EVENTS_PER_SECOND=100000
+      - USE_KINESIS=true
+      - KINESIS_STREAM_NAME=ad-events-production
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REDIS_URL=redis://redis-cluster-node-2:7001
+      - GENERATOR_ID=generator-2
+
+  ad-event-generator-3:
+    build:
+      context: ./services
+      dockerfile: event_generator/Dockerfile
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    environment:
+      - EVENTS_PER_SECOND=100000
+      - USE_KINESIS=true
+      - KINESIS_STREAM_NAME=ad-events-production
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REDIS_URL=redis://redis-cluster-node-3:7002
+      - GENERATOR_ID=generator-3
+
+  # Massive consumer fleet (50 instances for 1000 Kinesis shards)
+  ad-event-consumer-fleet:
+    build:
+      context: ./services
+      dockerfile: consumer/Dockerfile
+    command: ["python", "ad_event_consumer.py"]
+    restart: unless-stopped
+    deploy:
+      replicas: 50  # Scale this up to 200+ for production
+    environment:
+      - MAX_EVENTS_PER_SECOND=20000  # 20K per consumer
+      - USE_KINESIS=true
+      - USE_DYNAMODB=true
+      - KINESIS_STREAM_NAME=ad-events-production
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REDIS_CLUSTER_ENDPOINTS=redis-cluster-node-1:7000,redis-cluster-node-2:7001,redis-cluster-node-3:7002
+
+  # Enhanced API with connection pooling
+  api-production:
+    build:
+      context: ./services
+      dockerfile: api/Dockerfile
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    deploy:
+      replicas: 3  # Load balanced API instances
+    environment:
+      - DATA_DIR=/app/data
+      - LOG_LEVEL=INFO
+      - USE_DYNAMODB=true
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - REDIS_CLUSTER_ENDPOINTS=redis-cluster-node-1:7000,redis-cluster-node-2:7001,redis-cluster-node-3:7002
+      - ENABLE_METRICS_EXPORT=true
+      - PROMETHEUS_PORT=9090
+
+  # Monitoring and metrics
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    restart: unless-stopped
+
+  # Load balancer for API
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-production
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  redis-cluster-data:
+  grafana-data:
+  prometheus-data:

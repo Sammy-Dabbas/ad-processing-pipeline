@@ -20,7 +20,9 @@ app.include_router(ad_events_router)
 app.include_router(analytics_router)
 
 # Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+from pathlib import Path
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.get("/")

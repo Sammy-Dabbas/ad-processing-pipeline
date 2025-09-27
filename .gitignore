@@ -95,4 +95,5 @@ dump.rdb
 
 # Logs
 *.log
-logs/
+logs/portfolio-burst-test.sh
+scale-to-1m.sh
