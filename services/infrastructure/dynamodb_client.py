@@ -34,13 +34,16 @@ class DynamoDBClient:
     def _init_clients(self):
         """Initialize DynamoDB and DAX clients"""
         try:
-            # Standard DynamoDB client
+            # Standard DynamoDB client for real AWS
             kwargs = {"region_name": self.region}
-            if self.endpoint_url:
-                kwargs["endpoint_url"] = self.endpoint_url
-                # LocalStack credentials
-                kwargs["aws_access_key_id"] = "test"
-                kwargs["aws_secret_access_key"] = "test"
+            
+            # Use environment variables for credentials (real AWS)
+            aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+            aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+            
+            if aws_access_key and aws_secret_key:
+                kwargs["aws_access_key_id"] = aws_access_key
+                kwargs["aws_secret_access_key"] = aws_secret_key
             
             self.dynamodb = boto3.resource('dynamodb', **kwargs)
             self.dynamodb_client = boto3.client('dynamodb', **kwargs)
@@ -118,7 +121,7 @@ class DynamoDBClient:
                         'Projection': {
                             'ProjectionType': 'ALL'
                         },
-                        'BillingMode': 'PAY_PER_REQUEST'
+                        'OnDemandThroughput': {}
                     },
                     {
                         'IndexName': 'EventTypeIndex',
@@ -135,7 +138,7 @@ class DynamoDBClient:
                         'Projection': {
                             'ProjectionType': 'ALL'
                         },
-                        'BillingMode': 'PAY_PER_REQUEST'
+                        'OnDemandThroughput': {}
                     }
                 ],
                 BillingMode='PAY_PER_REQUEST',  # Auto-scaling

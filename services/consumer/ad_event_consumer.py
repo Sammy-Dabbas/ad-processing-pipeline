@@ -55,7 +55,7 @@ class HighPerformanceAdConsumer:
     
     def __init__(self, max_events_per_second: int = 1_000_000, input_source=None, output_source=None):
         self.max_events_per_second = max_events_per_second
-        self.batch_size = min(10000, max_events_per_second // 100)  # Larger batches
+        self.batch_size = min(25000, max_events_per_second // 50)  # Much larger batches
         
         # Initialize data sources
         if input_source:
@@ -64,7 +64,7 @@ class HighPerformanceAdConsumer:
             # Create input source from environment (for reading events)
             input_config = {
                 'type': 'kinesis' if os.getenv('USE_KINESIS', 'false').lower() == 'true' else 'file',
-                'stream_name': os.getenv('KINESIS_INPUT_STREAM', 'ad-events-input-stream'),
+                'stream_name': os.getenv('KINESIS_STREAM_NAME', 'ad-events-stream'),
                 'file_path': os.getenv('INPUT_FILE_PATH', '/app/data/raw_ad_events.jsonl'),
                 'region': os.getenv('AWS_REGION', 'us-east-1'),
                 'endpoint_url': os.getenv('KINESIS_ENDPOINT_URL')
@@ -228,8 +228,8 @@ class HighPerformanceAdConsumer:
             self.user_counter[event["user_id"]] += 1
             
         # Track revenue
-        revenue = event.get("revenue_usd", 0.0)
-        conversion_value = event.get("conversion_value_usd", 0.0)
+        revenue = event.get("revenue_usd") or 0.0
+        conversion_value = event.get("conversion_value_usd") or 0.0
         self.revenue_tracker += revenue + conversion_value
     
     def serialize_jsonl(self, obj: Dict) -> str:
@@ -279,7 +279,7 @@ class HighPerformanceAdConsumer:
         )
         
         # Log to console
-        print(f" PERFORMANCE | {events_per_second:,.0f} events/sec | "
+        print(f"PERFORMANCE | {events_per_second:,.0f} events/sec | "
               f"Latency: {avg_latency:.2f}ms | "
               f"Dedup: {dedup_rate:.1%} | "
               f"Revenue: ${self.revenue_tracker:,.2f}")
@@ -323,13 +323,13 @@ class HighPerformanceAdConsumer:
                             # Check for rotation
                             new_path = await self.find_latest_input_file()
                             if new_path != current_path:
-                                print(f" Detected file rotation: {new_path}")
+                                print(f"Detected file rotation: {new_path}")
                                 current_path = new_path
                                 position = 0
                                 break
                             
                             # No new data, wait briefly
-                            await asyncio.sleep(0.001)  # 1ms polling for high throughput
+                            await asyncio.sleep(0.0001)  # 0.1ms polling for higher throughput
                             
             except FileNotFoundError:
                 await asyncio.sleep(0.1)
@@ -349,7 +349,7 @@ class HighPerformanceAdConsumer:
             rotated_path = self.get_rotation_path(DATA_DIR, "processed_ad_events")
             if current_processed_file.exists():
                 current_processed_file.rename(rotated_path)
-                print(f" Rotated processed file: {rotated_path}")
+                print(f"Rotated processed file: {rotated_path}")
         
         for event in events:
             event_id = self.extract_event_id(event)
@@ -389,7 +389,7 @@ class HighPerformanceAdConsumer:
     
     async def run_consumer(self) -> None:
         """Main consumer loop optimized for high throughput"""
-        print(f" Starting high-performance ad consumer (target: {self.max_events_per_second:,} events/sec)")
+        print(f"Starting high-performance ad consumer (target: {self.max_events_per_second:,} events/sec)")
         
         PROCESSED_FILE.parent.mkdir(parents=True, exist_ok=True)
         input_file = await self.find_latest_input_file()
@@ -409,10 +409,10 @@ class HighPerformanceAdConsumer:
                     await self.process_events_batch(event_batch)
                     event_batch.clear()
                     
-                    # Rate limiting for target throughput
+                    # Minimal rate limiting - let it run as fast as possible
                     current_rate = self.total_processed / max(time.time() - self.start_time, 1)
-                    if current_rate > self.max_events_per_second:
-                        await asyncio.sleep(0.001)  # Brief pause
+                    if current_rate > self.max_events_per_second * 2:  # Only limit at 2x target
+                        await asyncio.sleep(0.0001)  # Very brief pause
                 
                 # Log metrics every 10 seconds
                 if time.time() - last_metrics_time >= 10:
@@ -423,10 +423,10 @@ class HighPerformanceAdConsumer:
             # Process remaining batch
             if event_batch:
                 await self.process_events_batch(event_batch)
-            print(" Consumer stopped gracefully")
+            print("Consumer stopped gracefully")
             return
         except Exception as e:
-            print(f" Consumer error: {e}")
+            print(f"Consumer error: {e}")
             return
 
 
@@ -438,11 +438,11 @@ async def run_consumer_with_resilience() -> None:
         try:
             await consumer.run_consumer()
         except KeyboardInterrupt:
-            print(" Consumer stopped by user")
+            print("Consumer stopped by user")
             break
         except Exception as e:
-            print(f" Consumer crashed: {e}")
-            print(" Restarting in 5 seconds...")
+            print(f"Consumer crashed: {e}")
+            print("Restarting in 5 seconds...")
             await asyncio.sleep(5)
 
 

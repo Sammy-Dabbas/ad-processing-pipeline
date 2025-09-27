@@ -96,3 +96,4 @@ dump.rdb
 # Logs
 *.log
 logs/
+scale-to-1m.sh

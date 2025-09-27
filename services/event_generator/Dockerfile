@@ -5,13 +5,14 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy requirements first for layer caching
-COPY requirements.txt .
+COPY event_generator/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
-COPY ad_event_generator.py .
+# Copy source code and infrastructure
+COPY event_generator/ad_event_generator.py .
+COPY infrastructure/ ./infrastructure/
 
 # Create data directory for volume mount
 RUN mkdir -p /app/data
