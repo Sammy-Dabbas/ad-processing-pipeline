@@ -1,52 +1,158 @@
 services:
-  # Ad event generation service
-  ad-event-generator:
-    build: ./services/event_generator
+
+  # Redis for deduplication and caching
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 1gb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
     volumes:
-      - ad_data:/app/data
+      - ./data/redis:/data
     restart: unless-stopped
-    environment:
-      - EVENTS_PER_SECOND=50000
-      - OUTPUT_FILE=raw_ad_events.jsonl
     healthcheck:
-      test: ["CMD", "python", "-c", "import pathlib; exit(0 if pathlib.Path('/app/data/raw_ad_events.jsonl').exists() else 1)"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  # Ad event processing service  
-  ad-event-consumer:
-    build: ./services/consumer
-    command: ["python", "ad_event_consumer.py"]
+  # Ad event generation service
+  ad-event-generator:
+    build: 
+      context: ./services
+      dockerfile: event_generator/Dockerfile
     volumes:
-      - ad_data:/app/data
-    depends_on:
-      ad-event-generator:
-        condition: service_healthy
+      - ./data:/app/data
     restart: unless-stopped
+    depends_on:
+      - redis
     environment:
-      - MAX_EVENTS_PER_SECOND=1000000
-      - INPUT_FILE=raw_ad_events.jsonl
-      - OUTPUT_FILE=processed_ad_events.jsonl
+      - EVENTS_PER_SECOND=1000000
+      - USE_KINESIS=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib; exit(0 if pathlib.Path('/app/data/ad_events.jsonl').exists() else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ad event processing service - Multiple instances for scaling
+  ad-event-consumer-1:
+    build:
+      context: ./services
+      dockerfile: consumer/Dockerfile
+    command: ["python", "ad_event_consumer.py"]
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - MAX_EVENTS_PER_SECOND=250000
+      - USE_KINESIS=true
+      - USE_DYNAMODB=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
+      - CONSUMER_ID=consumer-1
+
+  ad-event-consumer-2:
+    build:
+      context: ./services
+      dockerfile: consumer/Dockerfile
+    command: ["python", "ad_event_consumer.py"]
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - MAX_EVENTS_PER_SECOND=250000
+      - USE_KINESIS=true
+      - USE_DYNAMODB=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
+      - CONSUMER_ID=consumer-2
+
+  ad-event-consumer-3:
+    build:
+      context: ./services
+      dockerfile: consumer/Dockerfile
+    command: ["python", "ad_event_consumer.py"]
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - MAX_EVENTS_PER_SECOND=250000
+      - USE_KINESIS=true
+      - USE_DYNAMODB=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
+      - CONSUMER_ID=consumer-3
+
+  ad-event-consumer-4:
+    build:
+      context: ./services
+      dockerfile: consumer/Dockerfile
+    command: ["python", "ad_event_consumer.py"]
+    restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - MAX_EVENTS_PER_SECOND=250000
+      - USE_KINESIS=true
+      - USE_DYNAMODB=true
+      - KINESIS_STREAM_NAME=ad-events-stream
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
+      - CONSUMER_ID=consumer-4
 
   # REST API service
   api:
-    build: ./services/api
+    build:
+      context: ./services
+      dockerfile: api/Dockerfile
     volumes:
-      - ad_data:/app/data
+      - ./data:/app/data
     ports:
       - "8000:8000"
-    depends_on:
-      - ad-event-consumer
+    # depends_on:
+    #   - ad-event-consumer
     restart: unless-stopped
+    depends_on:
+      - redis
     environment:
       - DATA_DIR=/app/data
       - LOG_LEVEL=INFO
+      - USE_CLOUDWATCH=true
+      - USE_DYNAMODB=true
+      - DYNAMODB_TABLE=ad-events-processed
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE=${DYNAMODB_TABLE:-ad-events-processed}
+      - REDIS_URL=redis://redis:6379
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
-volumes:
-  ad_data:

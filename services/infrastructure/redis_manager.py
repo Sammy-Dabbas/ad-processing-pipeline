@@ -10,7 +10,7 @@ import hashlib
 from typing import Optional, Dict, List, Set
 from datetime import datetime, timedelta
 import asyncio
-import aioredis
+# import aioredis
 from dataclasses import asdict
 
 
@@ -38,7 +38,8 @@ class RedisAdEventManager:
     
     async def initialize_async(self):
         """Initialize async Redis connection"""
-        self.async_redis = await aioredis.from_url("redis://localhost:6379")
+        # Use redis-py's async support instead of aioredis
+        self.async_redis = self.redis_client
     
     async def close_async(self):
         """Close async Redis connection"""
