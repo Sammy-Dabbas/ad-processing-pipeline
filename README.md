@@ -40,7 +40,7 @@ Enterprise-grade ad event processing system designed for scale. Ingests, process
 ```
 Event Generator  Consumer Processor  API Service
                                         
-Redis Cache  Monitoring & Alerting  Docker Compose
+Redis Cache  Monitoring & Alerting  Docker Compose.
 ```
 
 ### Core Components
