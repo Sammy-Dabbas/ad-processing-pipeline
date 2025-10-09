@@ -21,16 +21,16 @@ Enterprise-grade ad event processing system designed for scale. Ingests, process
 
 ### Performance Metrics
 
-** Demonstrated Achievement: 375,000+ Events/Second**
+**Demonstrated Achievement: 375,000+ Events/Second**
 
 ![CloudWatch Performance Dashboard](docs/benchmarks/AdEvent-375k-eventspersecond.png)
 
 ```
- Demonstrated:      375,000+ events/second (verified in AWS CloudWatch)
- Peak Performance:  418,000 events/second
- Processing Latency: 1-2ms average (sub-millisecond capability)
- System Reliability: 99.99% uptime
- Architecture:      25 concurrent workers, enterprise monitoring
+Demonstrated:      375,000+ events/second (verified in AWS CloudWatch)
+Peak Performance:  418,000 events/second
+Processing Latency: 1-2ms average (sub-millisecond capability)
+System Reliability: 99.99% uptime
+Architecture:      25 concurrent workers, enterprise monitoring
 ```
 
 ****: Real-time processing capability proven with AWS CloudWatch integration, showing sustained high-throughput performance with enterprise-grade monitoring and alerting.
@@ -126,7 +126,7 @@ docker-compose ps
 # Test 1M events/sec capability
 python tests/final_1m_events_test.py
 
-# Output:  SUCCESS: 1M EVENTS/SEC ACHIEVED!
+# Output: SUCCESS: 1M EVENTS/SEC ACHIEVED!
 ```
 
 ### Health Checks
@@ -182,22 +182,22 @@ AdEvent/
 
 ## Portfolio Highlights
 
-###  **Technical Achievement**
+### **Technical Achievement**
 - **375,000+ events/second** sustained processing (demonstrated in AWS CloudWatch)
 - **Enterprise monitoring** with real-time dashboards and alerting
 - **Microservices architecture** with Docker containerization
 - **AWS integration** (DynamoDB, CloudWatch, Kinesis-ready)
 
-###  **Architecture Decisions**
+### **Architecture Decisions**
 - **Redis deduplication** for sub-millisecond duplicate detection
 - **Multi-container orchestration** with health checks and auto-restart
 - **Real-time analytics** with campaign performance tracking
 - **Scalable design** ready for horizontal scaling to 1M+ events/sec
 
-###  **Professional Standards**
+### **Professional Standards**
 - **Production-ready** error handling and monitoring
 - **CloudWatch integration** for enterprise-grade observability
 - **Clean codebase** with separation of concerns
 - **Documentation** and testing for maintainability
 
-**Ready for enterprise deployment with proven 375K+ events/second capability** 
+**Ready for enterprise deployment with proven 375K+ events/second capability**
