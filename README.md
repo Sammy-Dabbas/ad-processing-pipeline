@@ -1,4 +1,4 @@
-#Ad Event Processing System
+##Ad Event Processing System
 
 > High-performance real-time ad event ingestion and analytics platform capable of processing 1M+ events/second
 
