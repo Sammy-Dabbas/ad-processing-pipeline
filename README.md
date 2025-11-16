@@ -180,24 +180,3 @@ AdEvent/
  config.py                  # Configuration
 ```
 
-## Portfolio Highlights
-
-### **Technical Achievement**
-- **375,000+ events/second** sustained processing (demonstrated in AWS CloudWatch)
-- **Enterprise monitoring** with real-time dashboards and alerting
-- **Microservices architecture** with Docker containerization
-- **AWS integration** (DynamoDB, CloudWatch, Kinesis-ready)
-
-### **Architecture Decisions**
-- **Redis deduplication** for sub-millisecond duplicate detection
-- **Multi-container orchestration** with health checks and auto-restart
-- **Real-time analytics** with campaign performance tracking
-- **Scalable design** ready for horizontal scaling to 1M+ events/sec
-
-### **Professional Standards**
-- **Production-ready** error handling and monitoring
-- **CloudWatch integration** for enterprise-grade observability
-- **Clean codebase** with separation of concerns
-- **Documentation** and testing for maintainability
-
-**Ready for enterprise deployment with proven 375K+ events/second capability**
