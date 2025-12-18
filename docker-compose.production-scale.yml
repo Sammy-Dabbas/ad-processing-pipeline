@@ -1,11 +1,10 @@
 version: '3.8'
 
-# Production Scale Docker Compose for 1M Events/Second
-# Use this for high-throughput testing and production deployment
+
 
 services:
 
-  # Redis Cluster Coordinator (we'll need multiple Redis instances)
+
   redis-cluster-node-1:
     image: redis:7-alpine
     command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --port 7000
@@ -33,7 +32,7 @@ services:
       - ./data/redis-cluster/node-3:/data
     restart: unless-stopped
 
-  # High-throughput event generator (multiple instances)
+  # multiple instances
   ad-event-generator-1:
     build:
       context: ./services
@@ -85,7 +84,7 @@ services:
       - REDIS_URL=redis://redis-cluster-node-3:7002
       - GENERATOR_ID=generator-3
 
-  # Massive consumer fleet (50 instances for 1000 Kinesis shards)
+  # 50 instances for 1000 Kinesis shards
   ad-event-consumer-fleet:
     build:
       context: ./services
@@ -105,7 +104,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - REDIS_CLUSTER_ENDPOINTS=redis-cluster-node-1:7000,redis-cluster-node-2:7001,redis-cluster-node-3:7002
 
-  # Enhanced API with connection pooling
+  #Enhanced API with connection pooling
   api-production:
     build:
       context: ./services
@@ -129,7 +128,7 @@ services:
       - ENABLE_METRICS_EXPORT=true
       - PROMETHEUS_PORT=9090
 
-  # Monitoring and metrics
+  #Monitoring and metrics
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -148,7 +147,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     restart: unless-stopped
 
-  # Load balancer for API
+  #Load balancer for API
   nginx:
     image: nginx:alpine
     ports:
