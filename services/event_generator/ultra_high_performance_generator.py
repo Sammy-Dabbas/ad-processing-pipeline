@@ -192,7 +192,7 @@ class UltraHighPerformanceAdGenerator:
     
     def generate_ultra_high_volume(self, duration_seconds: int = 60):
         """Generate events at maximum speed for specified duration"""
-        print(f" ULTRA HIGH-PERFORMANCE GENERATION")
+        print(f"ULTRA HIGH-PERFORMANCE GENERATION")
         print(f"   Target: {self.target_events_per_second:,} events/sec")
         print(f"   Duration: {duration_seconds} seconds")
         print(f"   Expected total: {self.target_events_per_second * duration_seconds:,} events")
@@ -256,7 +256,7 @@ class UltraHighPerformanceAdGenerator:
                     current_rate = self.events_generated / elapsed
                     queue_size = self.write_queue.qsize()
                     
-                    print(f" {elapsed:5.1f}s | {self.events_generated:8,} events | "
+                    print(f"{elapsed:5.1f}s | {self.events_generated:8,} events | "
                           f"{current_rate:8,.0f}/sec | Queue: {queue_size:,}")
                     
                     last_report = current_time
@@ -272,7 +272,7 @@ class UltraHighPerformanceAdGenerator:
         
         finally:
             # Stop writer and wait for queue to empty
-            print(" Finishing writes...")
+            print("Finishing writes...")
             self.stop_writer = True
             
             # Wait for queue to empty
@@ -286,17 +286,17 @@ class UltraHighPerformanceAdGenerator:
         total_time = time.time() - start_time
         final_rate = self.events_generated / total_time
         
-        print(f"\n GENERATION COMPLETE!")
-        print(f"    Generated: {self.events_generated:,} events")
-        print(f"     Duration: {total_time:.1f} seconds")
-        print(f"    Rate: {final_rate:,.0f} events/sec")
-        print(f"    Output: {self.current_file}")
+        print(f"\nGENERATION COMPLETE!")
+        print(f"   Generated: {self.events_generated:,} events")
+        print(f"   Duration: {total_time:.1f} seconds")
+        print(f"   Rate: {final_rate:,.0f} events/sec")
+        print(f"   Output: {self.current_file}")
         
         # Check if we hit our target
         if final_rate >= self.target_events_per_second * 0.9:  # Within 90% of target
-            print(f"     TARGET ACHIEVED! ({final_rate/self.target_events_per_second*100:.1f}% of target)")
+            print(f"   TARGET ACHIEVED! ({final_rate/self.target_events_per_second*100:.1f}% of target)")
         else:
-            print(f"      Below target ({final_rate/self.target_events_per_second*100:.1f}% of {self.target_events_per_second:,}/sec)")
+            print(f"   Below target ({final_rate/self.target_events_per_second*100:.1f}% of {self.target_events_per_second:,}/sec)")
         
         return self.events_generated, final_rate
 
@@ -308,7 +308,7 @@ async def main():
     # Generate for 30 seconds at max speed
     events_generated, rate = generator.generate_ultra_high_volume(duration_seconds=30)
     
-    print(f"\n Ultra high-performance test complete!")
+    print(f"\nUltra high-performance test complete!")
     print(f"   Generated {events_generated:,} events at {rate:,.0f} events/sec")
 
 

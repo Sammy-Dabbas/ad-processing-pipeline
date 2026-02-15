@@ -34,7 +34,7 @@ class LocalTester:
         
     def test_event_generation(self, duration_seconds=30, events_per_second=1000):
         """Test the event generator"""
-        print(f" Testing Event Generation ({events_per_second} events/sec for {duration_seconds}s)")
+        print(f"Testing Event Generation ({events_per_second} events/sec for {duration_seconds}s)")
         
         generator = AdEventGenerator(events_per_second=events_per_second)
         generator.base_dir = self.data_dir
@@ -83,22 +83,22 @@ class LocalTester:
         duration = time.time() - start_time
         actual_rate = events_generated / duration
         
-        print(f" Generated {events_generated:,} events in {duration:.1f}s")
-        print(f" Actual rate: {actual_rate:,.0f} events/sec")
-        print(f" Output file: {generator.current_file}")
+        print(f"[PASS] Generated {events_generated:,} events in {duration:.1f}s")
+        print(f"Actual rate: {actual_rate:,.0f} events/sec")
+        print(f"Output file: {generator.current_file}")
         
         return events_generated, actual_rate
     
     async def test_event_processing(self, target_events=10000):
         """Test the event consumer"""
-        print(f" Testing Event Processing (target: {target_events:,} events)")
+        print(f"Testing Event Processing (target: {target_events:,} events)")
         
         consumer = HighPerformanceAdConsumer(max_events_per_second=100_000)
         
         # Ensure we have data to process
         input_file = self.data_dir / "ad_events.jsonl"
         if not input_file.exists():
-            print(" No input file found. Run event generation first.")
+            print("[FAIL] No input file found. Run event generation first.")
             return 0, 0
         
         start_time = time.time()
@@ -108,30 +108,30 @@ class LocalTester:
         try:
             await asyncio.wait_for(consumer.run_consumer(), timeout=30.0)
         except asyncio.TimeoutError:
-            print(" Processing timeout (30s limit for testing)")
+            print("[INFO] Processing timeout (30s limit for testing)")
         except Exception as e:
-            print(f"  Processing stopped: {e}")
+            print(f"[WARN]  Processing stopped: {e}")
         
         duration = time.time() - start_time
         events_processed = consumer.total_processed - initial_processed
         processing_rate = events_processed / max(duration, 1)
         
-        print(f" Processed {events_processed:,} events in {duration:.1f}s")
-        print(f" Processing rate: {processing_rate:,.0f} events/sec")
+        print(f"[PASS] Processed {events_processed:,} events in {duration:.1f}s")
+        print(f"Processing rate: {processing_rate:,.0f} events/sec")
         print(f" Total events: {consumer.total_processed:,}")
-        print(f" Deduped: {consumer.total_deduped:,}")
-        print(f" Errors: {consumer.total_errors:,}")
-        print(f" Revenue tracked: ${consumer.revenue_tracker:,.2f}")
+        print(f"Deduped: {consumer.total_deduped:,}")
+        print(f"[FAIL] Errors: {consumer.total_errors:,}")
+        print(f"Revenue tracked: ${consumer.revenue_tracker:,.2f}")
         
         return events_processed, processing_rate
     
     def analyze_generated_data(self):
         """Analyze the generated ad events"""
-        print(" Analyzing Generated Ad Events")
+        print("Analyzing Generated Ad Events")
         
         input_file = self.data_dir / "ad_events.jsonl"
         if not input_file.exists():
-            print(" No data file found")
+            print("[FAIL] No data file found")
             return
         
         event_types = {"impression": 0, "click": 0, "conversion": 0}
@@ -170,7 +170,7 @@ class LocalTester:
                 except json.JSONDecodeError:
                     continue
         
-        print(f" **Analysis Results**")
+        print(f"**Analysis Results**")
         print(f"   Total Events: {line_count:,}")
         print(f"   Event Types: {dict(event_types)}")
         print(f"   Device Distribution: {dict(devices)}")
@@ -193,17 +193,17 @@ class LocalTester:
     
     def check_processed_data(self):
         """Check the processed ad events"""
-        print(" Analyzing Processed Ad Events")
+        print("Analyzing Processed Ad Events")
         
         processed_file = self.data_dir / "processed_ad_events.jsonl"
         if not processed_file.exists():
-            print(" No processed data file found")
+            print("[FAIL] No processed data file found")
             return
         
         with open(processed_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         
-        print(f" Processed Events: {len(lines):,}")
+        print(f"Processed Events: {len(lines):,}")
         
         if lines:
             # Show sample processed event
@@ -215,7 +215,7 @@ class LocalTester:
                 if len(sample_event) > 10:
                     print(f"     ... and {len(sample_event) - 10} more fields")
             except json.JSONDecodeError:
-                print("  Could not parse sample event")
+                print("[WARN]  Could not parse sample event")
     
     def performance_summary(self, gen_rate, proc_rate):
         """Show performance summary"""
@@ -227,8 +227,8 @@ class LocalTester:
         target_gen = 50_000
         target_proc = 1_000_000
         
-        gen_status = "" if gen_rate >= target_gen else ""
-        proc_status = "" if proc_rate >= target_proc else ""
+        gen_status = "[PASS]" if gen_rate >= target_gen else "[WARN]"
+        proc_status = "[PASS]" if proc_rate >= target_proc else "[WARN]"
         
         print(f"   Generation Target: {gen_status} {target_gen:,}/sec")
         print(f"   Processing Target: {proc_status} {target_proc:,}/sec")
@@ -242,36 +242,36 @@ class LocalTester:
 
 async def main():
     """Run comprehensive testing"""
-    print(" **AD EVENT PROCESSING SYSTEM TEST**")
+    print("**AD EVENT PROCESSING SYSTEM TEST**")
     print("=" * 50)
     
     tester = LocalTester()
     
     # Test 1: Event Generation
-    print("\n1  EVENT GENERATION TEST")
+    print("\n1.  EVENT GENERATION TEST")
     events_generated, gen_rate = tester.test_event_generation(
         duration_seconds=15,  # Short test
         events_per_second=5000  # Manageable rate for testing
     )
     
     # Test 2: Analyze generated data
-    print("\n2  DATA ANALYSIS")
+    print("\n2.  DATA ANALYSIS")
     tester.analyze_generated_data()
     
     # Test 3: Event Processing
-    print("\n3  EVENT PROCESSING TEST")
+    print("\n3.  EVENT PROCESSING TEST")
     events_processed, proc_rate = await tester.test_event_processing(target_events=events_generated)
     
     # Test 4: Check processed data
-    print("\n4  PROCESSED DATA ANALYSIS")
+    print("\n4.  PROCESSED DATA ANALYSIS")
     tester.check_processed_data()
     
     # Test 5: Performance summary
-    print("\n5  PERFORMANCE SUMMARY")
+    print("\n5.  PERFORMANCE SUMMARY")
     tester.performance_summary(gen_rate, proc_rate)
     
-    print(f"\n **Testing Complete!**")
-    print(f" Test data saved in: {tester.data_dir}")
+    print(f"\n[PASS] **Testing Complete!**")
+    print(f"Test data saved in: {tester.data_dir}")
 
 
 if __name__ == "__main__":

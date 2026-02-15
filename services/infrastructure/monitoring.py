@@ -98,9 +98,9 @@ class ProductionMonitoring:
         if self.use_cloudwatch:
             try:
                 self.cloudwatch_client = boto3.client('cloudwatch', region_name='us-east-1')
-                self.logger.info(" CloudWatch integration enabled")
+                self.logger.info("CloudWatch integration enabled")
             except Exception as e:
-                self.logger.warning(f" CloudWatch setup failed: {e}")
+                self.logger.warning(f"CloudWatch setup failed: {e}")
                 self.use_cloudwatch = False
 
         # Initialize default alerts
@@ -543,7 +543,7 @@ class ProductionMonitoring:
 # Example alert callback
 def slack_alert_callback(alert: Alert, alarm_state: AlarmState):
     """Example callback to send alerts to Slack"""
-    message = f" ALERT: {alert.name}\n"
+    message = f"ALERT: {alert.name}\n"
     message += f"Description: {alert.description}\n"
     message += f"State: {alarm_state.state}\n"
     message += f"Reason: {alarm_state.reason}\n"

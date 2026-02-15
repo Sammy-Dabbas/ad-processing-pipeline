@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     global redis_manager, monitoring
     
     # Startup
-    print(" Starting production ad event processing API...")
+    print("Starting production ad event processing API...")
     
     # Initialize Redis
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
@@ -46,16 +46,16 @@ async def lifespan(app: FastAPI):
     # Health check
     health = await redis_manager.health_check()
     if health["status"] != "healthy":
-        print(f" Redis health check failed: {health}")
+        print(f"Redis health check failed: {health}")
     else:
-        print(f" Redis connected: {health['latency_ms']}ms latency")
+        print(f"Redis connected: {health['latency_ms']}ms latency")
     
-    print(" Production API ready for 1M+ events/sec")
+    print("Production API ready for 1M+ events/sec")
     
     yield
     
     # Shutdown
-    print(" Shutting down production API...")
+    print("Shutting down production API...")
     if redis_manager:
         await redis_manager.close_async()
     if monitoring:
@@ -397,7 +397,7 @@ async def log_batch_processing(batch_size: int, processed: int, duration: float)
     
     rate = processed / max(duration, 0.001)
     
-    print(f" Batch processed: {processed}/{batch_size} events in {duration:.3f}s ({rate:,.0f}/sec)")
+    print(f"Batch processed: {processed}/{batch_size} events in {duration:.3f}s ({rate:,.0f}/sec)")
 
 
 # =============================================

@@ -33,7 +33,7 @@ class MillionEventsPerSecondTester:
         
     async def test_generation_performance(self):
         """Test ultra-high-performance event generation"""
-        print(" PHASE 1: ULTRA HIGH-PERFORMANCE EVENT GENERATION")
+        print("PHASE 1: ULTRA HIGH-PERFORMANCE EVENT GENERATION")
         print("=" * 60)
         
         # Create generator targeting 1M events/sec
@@ -42,7 +42,7 @@ class MillionEventsPerSecondTester:
         generator.current_file = self.test_dir / "ad_events.jsonl"
         
         # Generate for 30 seconds - should produce 30M events if target hit
-        print(" Generating events for 30 seconds at maximum speed...")
+        print("Generating events for 30 seconds at maximum speed...")
         events_generated, generation_rate = generator.generate_ultra_high_volume(duration_seconds=30)
         
         # Analyze results
@@ -52,11 +52,11 @@ class MillionEventsPerSecondTester:
         print(f"   Target Achievement: {generation_rate/1_000_000*100:.1f}% of 1M/sec")
         
         if generation_rate >= 500_000:  # At least 500K/sec
-            print(f"    EXCELLENT: Ready for high-volume processing test")
+            print(f"   [PASS] EXCELLENT: Ready for high-volume processing test")
         elif generation_rate >= 100_000:  # At least 100K/sec
-            print(f"    GOOD: Sufficient for processing test")
+            print(f"   [WARN] GOOD: Sufficient for processing test")
         else:
-            print(f"    NEEDS OPTIMIZATION: Consider increasing batch sizes")
+            print(f"   [FAIL] NEEDS OPTIMIZATION: Consider increasing batch sizes")
         
         return events_generated, generation_rate
     
@@ -76,11 +76,11 @@ class MillionEventsPerSecondTester:
         input_file = self.test_dir / "ad_events.jsonl"
         
         if not input_file.exists():
-            print(" No input file found for processing test")
+            print("[FAIL] No input file found for processing test")
             return 0, 0
         
         # Process all events with 120 second timeout
-        print(f" Processing {events_generated:,} events at maximum speed...")
+        print(f"Processing {events_generated:,} events at maximum speed...")
         events_processed, processing_rate = consumer.process_ultra_high_volume(
             input_file, duration_seconds=120
         )
@@ -93,13 +93,13 @@ class MillionEventsPerSecondTester:
         print(f"   Throughput Ratio: {events_processed/events_generated*100:.1f}% of generated events")
         
         if processing_rate >= 800_000:  # 800K/sec or higher
-            print(f"    EXCELLENT: Near 1M/sec target achieved!")
+            print(f"   [PASS] EXCELLENT: Near 1M/sec target achieved!")
         elif processing_rate >= 500_000:  # 500K/sec or higher
-            print(f"    VERY GOOD: High performance achieved")
+            print(f"   [WARN] VERY GOOD: High performance achieved")
         elif processing_rate >= 100_000:  # 100K/sec or higher
-            print(f"    GOOD: Solid performance")
+            print(f"   [WARN] GOOD: Solid performance")
         else:
-            print(f"    NEEDS OPTIMIZATION: Consider tuning parameters")
+            print(f"   [FAIL] NEEDS OPTIMIZATION: Consider tuning parameters")
         
         return events_processed, processing_rate
     
@@ -112,7 +112,7 @@ class MillionEventsPerSecondTester:
         bottleneck = "Generation" if gen_rate < proc_rate else "Processing"
         bottleneck_rate = min(gen_rate, proc_rate)
         
-        print(f" PERFORMANCE SUMMARY:")
+        print(f"PERFORMANCE SUMMARY:")
         print(f"   Generation Rate:    {gen_rate:10,.0f} events/sec")
         print(f"   Processing Rate:    {proc_rate:10,.0f} events/sec") 
         print(f"   System Bottleneck:  {bottleneck}")
@@ -130,19 +130,19 @@ class MillionEventsPerSecondTester:
         # Performance grade
         if achievement >= 80:
             grade = "A+ EXCELLENT"
-            status = ""
+            status = "[PASS]"
         elif achievement >= 60:
             grade = "A  VERY GOOD" 
-            status = ""
+            status = "[PASS]"
         elif achievement >= 40:
             grade = "B+ GOOD"
-            status = ""
+            status = "[WARN]"
         elif achievement >= 20:
             grade = "B  FAIR"
-            status = ""
+            status = "[WARN]"
         else:
             grade = "C  NEEDS WORK"
-            status = ""
+            status = "[FAIL]"
         
         print(f"   Performance Grade:  {status} {grade}")
         
@@ -157,8 +157,7 @@ class MillionEventsPerSecondTester:
             print(f"    Consider SSD storage and more RAM for better performance")
         
         if achievement >= 80:
-            print(f"    SYSTEM READY FOR PRODUCTION SCALE!")
-            print(f"    Perfect for AdTech interviews and resume demonstration")
+            print(f"   [PASS] SYSTEM READY FOR PRODUCTION SCALE!")
         
         return achievement
     
@@ -170,10 +169,10 @@ class MillionEventsPerSecondTester:
         processed_file = self.test_dir / "processed_ad_events.jsonl"
         
         if not processed_file.exists():
-            print(" No processed data found for validation")
+            print("[FAIL] No processed data found for validation")
             return
         
-        print(" Analyzing processed data quality...")
+        print("Analyzing processed data quality...")
         
         # Quick analysis
         import json
@@ -216,7 +215,7 @@ class MillionEventsPerSecondTester:
                     except json.JSONDecodeError:
                         continue
             
-            print(f" DATA QUALITY RESULTS (sample of {line_count:,} events):")
+            print(f"[PASS] DATA QUALITY RESULTS (sample of {line_count:,} events):")
             print(f"   Event Distribution: {dict(event_types)}")
             print(f"   Device Distribution: {dict(devices)}")
             print(f"   Total Revenue: ${total_revenue:,.2f}")
@@ -235,46 +234,41 @@ class MillionEventsPerSecondTester:
                 cvr = (conversions / clicks) * 100
                 print(f"   Conversion Rate: {cvr:.2f}%")
             
-            print(f"    Data quality looks good!")
+            print(f"   [PASS] Data quality looks good!")
             
         except Exception as e:
-            print(f" Error validating data: {e}")
+            print(f"[FAIL] Error validating data: {e}")
     
     def show_final_summary(self, achievement):
         """Show final test summary"""
-        print(f"\n 1 MILLION EVENTS/SEC TEST COMPLETE!")
+        print(f"\n[PASS] 1 MILLION EVENTS/SEC TEST COMPLETE!")
         print("=" * 60)
         
         if achievement >= 80:
-            print(f" OUTSTANDING ACHIEVEMENT!")
+            print(f"OUTSTANDING ACHIEVEMENT!")
             print(f"   Your system achieved {achievement:.1f}% of the 1M events/sec target")
             print(f"   This demonstrates production-scale AdTech processing capability")
-            print(f"   Perfect for senior engineering roles at Google, Meta, Amazon!")
+            
             
         elif achievement >= 50:
-            print(f" SOLID PERFORMANCE!")
+            print(f"SOLID PERFORMANCE!")
             print(f"   Your system achieved {achievement:.1f}% of the 1M events/sec target")
             print(f"   This shows strong engineering skills and scalable architecture")
-            print(f"   Great foundation for AdTech interviews!")
+            
             
         else:
-            print(f" GOOD FOUNDATION!")
+            print(f"GOOD FOUNDATION!")
             print(f"   Your system achieved {achievement:.1f}% of the 1M events/sec target")
             print(f"   Shows understanding of high-performance systems")
             print(f"   Ready for optimization and cloud scaling!")
         
-        print(f"\n RESUME TALKING POINTS:")
-        print(f"    'Built ad event processing system targeting 1M+ events/sec'")
-        print(f"    'Achieved {achievement:.0f}% of target with optimized Python pipeline'")
-        print(f"    'Implemented realistic ad conversion funnels and revenue tracking'")
-        print(f"    'Designed for horizontal scaling with cloud infrastructure'")
-        
-        print(f"\n Test data saved in: {self.test_dir}")
+        print(f"
+Test data saved in: {self.test_dir}")
 
 
 async def main():
     """Run comprehensive 1M events/sec test"""
-    print(" 1 MILLION EVENTS PER SECOND CHALLENGE")
+    print("1 MILLION EVENTS PER SECOND CHALLENGE")
     print("Testing ultra-high-performance ad event processing system")
     print("=" * 70)
     
@@ -297,9 +291,9 @@ async def main():
         tester.show_final_summary(achievement)
         
     except KeyboardInterrupt:
-        print("\n Test interrupted by user")
+        print("\n[INTERRUPT] Test interrupted by user")
     except Exception as e:
-        print(f"\n Test error: {e}")
+        print(f"\n[FAIL] Test error: {e}")
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ class RealisticPerformanceDemo:
     
     def generate_high_volume_events(self, target_events: int = 500_000, target_rate: int = 50_000):
         """Generate events at realistic high volume"""
-        print(f" REALISTIC HIGH-VOLUME EVENT GENERATION")
+        print(f"REALISTIC HIGH-VOLUME EVENT GENERATION")
         print(f"   Target Events: {target_events:,}")
         print(f"   Target Rate: {target_rate:,} events/sec")
         print("=" * 50)
@@ -77,13 +77,13 @@ class RealisticPerformanceDemo:
                 # Progress reporting
                 if current_time - last_report >= 2:  # Every 2 seconds
                     actual_rate = events_generated / elapsed
-                    print(f" {elapsed:5.1f}s | {events_generated:7,} events | {actual_rate:7,.0f}/sec")
+                    print(f"[PROGRESS] {elapsed:5.1f}s | {events_generated:7,} events | {actual_rate:7,.0f}/sec")
                     last_report = current_time
         
         total_time = time.time() - start_time
         actual_rate = events_generated / total_time
         
-        print(f"\n GENERATION COMPLETE!")
+        print(f"\n[PASS] GENERATION COMPLETE!")
         print(f"   Events Generated: {events_generated:,}")
         print(f"   Duration: {total_time:.1f} seconds")
         print(f"   Actual Rate: {actual_rate:,.0f} events/sec")
@@ -235,7 +235,7 @@ class RealisticPerformanceDemo:
                             processing_rate = events_processed / max(elapsed, 1)
                             queue_size = processing_queue.qsize()
                             
-                            print(f" {elapsed:5.1f}s | Read: {lines_read:6,} | "
+                            print(f"[PROGRESS] {elapsed:5.1f}s | Read: {lines_read:6,} | "
                                   f"Processed: {events_processed:6,} | "
                                   f"Rate: {processing_rate:6,.0f}/sec | "
                                   f"Queue: {queue_size:4,}")
@@ -243,7 +243,7 @@ class RealisticPerformanceDemo:
                             last_report = current_time
             
             # Wait for processing to complete
-            print(" Waiting for processing to complete...")
+            print("[INFO] Waiting for processing to complete...")
             while not processing_queue.empty() or not output_queue.empty():
                 time.sleep(0.5)
                 
@@ -264,7 +264,7 @@ class RealisticPerformanceDemo:
         total_time = time.time() - start_time
         processing_rate = events_processed / max(total_time, 1)
         
-        print(f"\n PROCESSING COMPLETE!")
+        print(f"\n[PASS] PROCESSING COMPLETE!")
         print(f"   Events Processed: {events_processed:,}")
         print(f"   Events Deduped: {events_deduped:,}")
         print(f"   Duration: {total_time:.1f} seconds")
@@ -276,10 +276,10 @@ class RealisticPerformanceDemo:
     
     def analyze_performance(self, gen_rate, proc_rate):
         """Analyze realistic performance results"""
-        print(f"\n REALISTIC PERFORMANCE ANALYSIS")
+        print(f"\nREALISTIC PERFORMANCE ANALYSIS")
         print("=" * 50)
         
-        print(f" PERFORMANCE RESULTS:")
+        print(f"PERFORMANCE RESULTS:")
         print(f"   Generation Rate:  {gen_rate:8,.0f} events/sec")
         print(f"   Processing Rate:  {proc_rate:8,.0f} events/sec")
         
@@ -295,38 +295,38 @@ class RealisticPerformanceDemo:
             (1_000_000, "Google/Meta Scale")
         ]
         
-        print(f"\n PERFORMANCE BENCHMARKS:")
+        print(f"\nPERFORMANCE BENCHMARKS:")
         for target, label in targets:
             if effective_rate >= target:
-                status = ""
+                status = "[PASS]"
             else:
-                status = ""
+                status = "[FAIL]"
             
             achievement = min(100, effective_rate / target * 100)
             print(f"   {status} {label:>15}: {achievement:5.1f}% ({target:7,}/sec)")
         
-        # Resume talking points
-        print(f"\n RESUME-READY ACHIEVEMENTS:")
+        # System capabilities
+        print(f"
+SYSTEM CAPABILITIES:")
         
         if effective_rate >= 100_000:
-            print(f"    'Built high-performance ad processing system achieving {effective_rate:,.0f} events/sec'")
-            print(f"    'Optimized Python pipeline for enterprise-scale real-time processing'")
+            print(f"   Built high-performance ad processing system achieving {effective_rate:,.0f} events/sec")
+            print(f"   Optimized Python pipeline for enterprise-scale real-time processing")
         elif effective_rate >= 50_000:
-            print(f"    'Developed scalable ad event system processing {effective_rate:,.0f} events/sec'")
-            print(f"    'Demonstrated production-ready performance optimization skills'")
+            print(f"   Developed scalable ad event system processing {effective_rate:,.0f} events/sec")
+            print(f"   Demonstrated production-ready performance optimization skills")
         else:
-            print(f"    'Built real-time ad processing system with {effective_rate:,.0f} events/sec throughput'")
-            print(f"    'Designed for horizontal scaling and cloud deployment'")
+            print(f"   Built real-time ad processing system with {effective_rate:,.0f} events/sec throughput")
+            print(f"   Designed for horizontal scaling and cloud deployment")
         
-        print(f"    'Implemented multi-threaded processing with deduplication and revenue tracking'")
-        print(f"    'Created Docker-based microservices architecture for AdTech pipeline'")
-        
+        print(f"   Implemented multi-threaded processing with deduplication and revenue tracking")
+        print(f"   Created Docker-based microservices architecture for AdTech pipeline")
         return effective_rate
 
 
 def main():
     """Run realistic performance demonstration"""
-    print(" REALISTIC HIGH-PERFORMANCE AD PROCESSING DEMO")
+    print("REALISTIC HIGH-PERFORMANCE AD PROCESSING DEMO")
     print("Demonstrating achievable performance with current optimizations")
     print("=" * 70)
     
@@ -345,20 +345,20 @@ def main():
         # Phase 3: Analyze performance
         effective_rate = demo.analyze_performance(gen_rate, proc_rate)
         
-        print(f"\n REALISTIC PERFORMANCE DEMO COMPLETE!")
+        print(f"\n[PASS] REALISTIC PERFORMANCE DEMO COMPLETE!")
         print(f"System demonstrated {effective_rate:,.0f} events/sec effective throughput")
         
         if effective_rate >= 50_000:
-            print(f" EXCELLENT: Production-ready performance achieved!")
+            print(f"EXCELLENT: Production-ready performance achieved!")
         elif effective_rate >= 20_000:
-            print(f" VERY GOOD: Strong performance for AdTech applications!")
+            print(f"VERY GOOD: Strong performance for AdTech applications!")
         else:
-            print(f" GOOD: Solid foundation for optimization and scaling!")
+            print(f"GOOD: Solid foundation for optimization and scaling!")
         
     except KeyboardInterrupt:
-        print("\n Demo interrupted by user")
+        print("\n[INTERRUPT] Demo interrupted by user")
     except Exception as e:
-        print(f"\n Demo error: {e}")
+        print(f"\n[FAIL] Demo error: {e}")
 
 
 if __name__ == "__main__":

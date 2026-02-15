@@ -459,7 +459,7 @@ class AdEventGenerator:
             events_generated += successful_writes
             
             if successful_writes != len(event_dicts):
-                print(f"  Warning: Only {successful_writes}/{len(event_dicts)} events written successfully")
+                print(f"Warning: Only {successful_writes}/{len(event_dicts)} events written successfully")
             
             # Rate limiting and performance metrics
             batch_duration = time.time() - batch_start_time

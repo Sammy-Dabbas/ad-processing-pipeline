@@ -96,4 +96,6 @@ dump.rdb
 # Logs
 *.log
 logs/
-scale-to-1m.sh
+
+# Test output
+1m_per_sec_test/

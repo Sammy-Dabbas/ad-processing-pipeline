@@ -179,7 +179,7 @@ class UltraHighPerformanceConsumer:
                 except Exception as e:
                     self.events_errors += 1
                     if self.events_errors % 1000 == 0:  # Log every 1000 errors
-                        print(f" Processing error: {e}")
+                        print(f"Processing error: {e}")
         
         # Start processor threads
         for i in range(num_threads):
@@ -242,7 +242,7 @@ class UltraHighPerformanceConsumer:
         memory_mb = len(self.seen_ids) * 32 / (1024 * 1024)
         
         # Status indicator
-        status = "" if events_per_second >= self.target_events_per_second * 0.8 else "" if events_per_second >= 10000 else ""
+        status = "OK" if events_per_second >= self.target_events_per_second * 0.8 else "WARN" if events_per_second >= 10000 else "LOW"
         
         print(f"{status} {current_time - self.start_time:6.1f}s | "
               f"{self.events_processed:10,} events | "
@@ -274,10 +274,10 @@ class UltraHighPerformanceConsumer:
     
     def read_events_ultra_fast(self, input_file: Path) -> None:
         """Ultra-fast file reading with memory mapping"""
-        print(f" Reading events from: {input_file}")
+        print(f"Reading events from: {input_file}")
         
         if not input_file.exists():
-            print(f" Input file not found: {input_file}")
+            print(f"Input file not found: {input_file}")
             return
         
         try:
@@ -317,20 +317,20 @@ class UltraHighPerformanceConsumer:
                         # Progress reporting
                         if lines_processed % 100_000 == 0 and lines_processed > 0:
                             queue_size = self.processing_queue.qsize()
-                            print(f" Read {lines_processed:,} lines | Queue: {queue_size:,}")
+                            print(f"Read {lines_processed:,} lines | Queue: {queue_size:,}")
         
         except Exception as e:
-            print(f" Error reading file: {e}")
+            print(f"Error reading file: {e}")
     
     def process_ultra_high_volume(self, input_file: Path, duration_seconds: int = 60):
         """Process events at ultra-high volume"""
-        print(f" ULTRA HIGH-PERFORMANCE PROCESSING")
+        print(f"ULTRA HIGH-PERFORMANCE PROCESSING")
         print(f"   Target: {self.target_events_per_second:,} events/sec")
         print(f"   Input: {input_file}")
         print(f"   Max Duration: {duration_seconds} seconds")
         
         # Start worker threads
-        print(" Starting processing threads...")
+        print("Starting processing threads...")
         self.start_processor_threads(num_threads=8)  # Use more threads
         self.start_writer_thread()
         
@@ -343,7 +343,7 @@ class UltraHighPerformanceConsumer:
             self.read_events_ultra_fast(input_file)
             
             # Wait for processing to complete
-            print(" Waiting for processing to complete...")
+            print("Waiting for processing to complete...")
             
             while (not self.processing_queue.empty() or not self.output_queue.empty()) and \
                   (time.time() - start_time) < duration_seconds:
@@ -359,7 +359,7 @@ class UltraHighPerformanceConsumer:
         
         finally:
             # Stop all threads
-            print(" Stopping processing threads...")
+            print("Stopping processing threads...")
             self.stop_processing = True
             
             # Wait for threads to finish
@@ -373,20 +373,20 @@ class UltraHighPerformanceConsumer:
         total_time = time.time() - start_time
         final_rate = self.events_processed / max(total_time, 1)
         
-        print(f"\n PROCESSING COMPLETE!")
-        print(f"    Processed: {self.events_processed:,} events")
-        print(f"    Deduped: {self.events_deduped:,} events")
-        print(f"    Errors: {self.events_errors:,} events")
-        print(f"     Duration: {total_time:.1f} seconds")
-        print(f"    Rate: {final_rate:,.0f} events/sec")
-        print(f"    Revenue: ${self.revenue_tracked:,.2f}")
-        print(f"    Output: {self.processed_file}")
+        print(f"\nPROCESSING COMPLETE!")
+        print(f"   Processed: {self.events_processed:,} events")
+        print(f"   Deduped: {self.events_deduped:,} events")
+        print(f"   Errors: {self.events_errors:,} events")
+        print(f"   Duration: {total_time:.1f} seconds")
+        print(f"   Rate: {final_rate:,.0f} events/sec")
+        print(f"   Revenue: ${self.revenue_tracked:,.2f}")
+        print(f"   Output: {self.processed_file}")
         
         # Check if we hit our target
         if final_rate >= self.target_events_per_second * 0.8:  # Within 80% of target
-            print(f"     TARGET ACHIEVED! ({final_rate/self.target_events_per_second*100:.1f}% of target)")
+            print(f"   TARGET ACHIEVED! ({final_rate/self.target_events_per_second*100:.1f}% of target)")
         else:
-            print(f"      Below target ({final_rate/self.target_events_per_second*100:.1f}% of {self.target_events_per_second:,}/sec)")
+            print(f"   Below target ({final_rate/self.target_events_per_second*100:.1f}% of {self.target_events_per_second:,}/sec)")
         
         return self.events_processed, final_rate
 
@@ -407,13 +407,13 @@ def main():
             input_file = test_input
     
     if not input_file.exists():
-        print(" No input file found. Run event generation first.")
+        print("No input file found. Run event generation first.")
         return
     
     # Process events
     events_processed, rate = consumer.process_ultra_high_volume(input_file, duration_seconds=120)
     
-    print(f"\n Ultra high-performance processing complete!")
+    print(f"\nUltra high-performance processing complete!")
     print(f"   Processed {events_processed:,} events at {rate:,.0f} events/sec")
 
 

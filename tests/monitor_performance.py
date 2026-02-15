@@ -85,20 +85,20 @@ class PerformanceMonitor:
     def display_metrics(self, metrics):
         """Display formatted metrics"""
         if not metrics:
-            print(" Cannot connect to API or get metrics")
-            print(" Make sure the system is running: docker-compose up -d")
+            print("Cannot connect to API or get metrics")
+            print("Make sure the system is running: docker-compose up -d")
             return
         
         self.clear_screen()
         
         # Header
-        print(" **AD EVENT PROCESSING SYSTEM - LIVE MONITOR**")
+        print("AD EVENT PROCESSING SYSTEM - LIVE MONITOR")
         print("=" * 65)
-        print(f" {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} |  Auto-refresh every 2s")
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Auto-refresh every 2s")
         print()
         
         # System Performance
-        print(" **SYSTEM PERFORMANCE**")
+        print("SYSTEM PERFORMANCE")
         print("-" * 30)
         
         events_per_sec = metrics.get("events_per_second", 0)
@@ -109,27 +109,27 @@ class PerformanceMonitor:
         events_trend = self.get_trend_indicator(metrics, self.previous_metrics, "events_per_second")
         latency_trend = self.get_trend_indicator(metrics, self.previous_metrics, "avg_latency_ms")
         
-        print(f" Events/Second:  {self.format_number(events_per_sec):>8} {events_trend}")
-        print(f" Avg Latency:    {latency:>8.1f}ms {latency_trend}")
-        print(f" Memory Usage:   {memory:>8.1f}MB")
-        print(f" Error Rate:     {error_rate:>8.1f}%")
+        print(f"Events/Second:  {self.format_number(events_per_sec):>8} {events_trend}")
+        print(f"Avg Latency:    {latency:>8.1f}ms {latency_trend}")
+        print(f"Memory Usage:   {memory:>8.1f}MB")
+        print(f"Error Rate:     {error_rate:>8.1f}%")
         
         # Performance status
         if events_per_sec >= 50000:
-            perf_status = " EXCELLENT"
+            perf_status = "EXCELLENT"
         elif events_per_sec >= 10000:
-            perf_status = " GOOD"
+            perf_status = "GOOD"
         else:
-            perf_status = " NEEDS OPTIMIZATION"
-        
-        latency_status = " EXCELLENT" if latency < 20 else " ACCEPTABLE" if latency < 100 else " HIGH"
-        
-        print(f" Throughput:     {perf_status}")
-        print(f" Latency:        {latency_status}")
+            perf_status = "NEEDS OPTIMIZATION"
+
+        latency_status = "EXCELLENT" if latency < 20 else "ACCEPTABLE" if latency < 100 else "HIGH"
+
+        print(f"Throughput:     {perf_status}")
+        print(f"Latency:        {latency_status}")
         print()
         
         # Business Metrics
-        print(" **BUSINESS METRICS**")
+        print("BUSINESS METRICS")
         print("-" * 25)
         
         revenue_hour = metrics.get("revenue_last_hour", 0)
@@ -138,23 +138,23 @@ class PerformanceMonitor:
         
         revenue_trend = self.get_trend_indicator(metrics, self.previous_metrics, "revenue_last_hour")
         
-        print(f" Revenue (1h):   {self.format_currency(revenue_hour):>10} {revenue_trend}")
-        print(f" Events (1h):    {self.format_number(events_hour):>10}")
-        print(f" Campaigns:      {unique_campaigns:>10}")
+        print(f"Revenue (1h):   {self.format_currency(revenue_hour):>10} {revenue_trend}")
+        print(f"Events (1h):    {self.format_number(events_hour):>10}")
+        print(f"Campaigns:      {unique_campaigns:>10}")
         
         # Conversion Metrics
         conversion_rates = metrics.get("conversion_rates", {})
         ctr = conversion_rates.get("overall_ctr", 0)
         cvr = conversion_rates.get("overall_cvr", 0)
         
-        print(f" Click Rate:     {ctr:>9.2f}%")
-        print(f" Conversion:     {cvr:>9.2f}%")
+        print(f"Click Rate:     {ctr:>9.2f}%")
+        print(f"Conversion:     {cvr:>9.2f}%")
         print()
         
         # Device Performance
         device_performance = metrics.get("performance_by_device", {})
         if device_performance:
-            print(" **DEVICE BREAKDOWN**")
+            print("DEVICE BREAKDOWN")
             print("-" * 25)
             
             for device, stats in device_performance.items():
@@ -166,25 +166,25 @@ class PerformanceMonitor:
         print()
         
         # System Status
-        print(" **SYSTEM STATUS**")
+        print("SYSTEM STATUS")
         print("-" * 20)
         
         consumer_status = metrics.get("consumer_status", "unknown")
         dedup_rate = metrics.get("deduplication_rate", 0)
         
         status_icon = {
-            "active": "",
-            "warning": "", 
-            "error": "",
-            "no_data": ""
-        }.get(consumer_status, "")
+            "active": "[OK]",
+            "warning": "[WARN]",
+            "error": "[ERR]",
+            "no_data": "[--]"
+        }.get(consumer_status, "[?]")
         
         print(f"Consumer:          {status_icon} {consumer_status.upper()}")
         print(f"Deduplication:     {dedup_rate:>8.1f}%")
         print()
         
         # Performance Targets
-        print(" **TARGETS**")
+        print("TARGETS")
         print("-" * 15)
         
         target_events = 1_000_000
@@ -204,14 +204,14 @@ class PerformanceMonitor:
         print(f"Latency:  [{latency_bar}]")
         
         print()
-        print(" Press Ctrl+C to stop monitoring")
+        print("Press Ctrl+C to stop monitoring")
         
         # Store for trend calculation
         self.previous_metrics = metrics.copy()
     
     def run_monitor(self, refresh_interval=2):
         """Run continuous monitoring"""
-        print(" Starting performance monitor...")
+        print("Starting performance monitor...")
         print("   Connecting to API...")
         
         try:
@@ -221,9 +221,9 @@ class PerformanceMonitor:
                 time.sleep(refresh_interval)
                 
         except KeyboardInterrupt:
-            print("\n\n Monitoring stopped")
+            print("\n\nMonitoring stopped")
         except Exception as e:
-            print(f"\n\n Monitor error: {e}")
+            print(f"\n\nMonitor error: {e}")
 
 
 def main():

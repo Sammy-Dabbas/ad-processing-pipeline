@@ -64,7 +64,7 @@ def generate_worker(worker_id, events_per_worker, result_queue):
         'rate': rate
     })
     
-    print(f" Generator {worker_id}: {events_generated:,} at {rate:,.0f}/sec")
+    print(f"Generator {worker_id}: {events_generated:,} at {rate:,.0f}/sec")
 
 
 def process_worker(worker_id, events_chunk, result_queue):
@@ -120,7 +120,7 @@ def process_worker(worker_id, events_chunk, result_queue):
         'rate': rate
     })
     
-    print(f" Processor {worker_id}: {events_processed:,} at {rate:,.0f}/sec")
+    print(f"Processor {worker_id}: {events_processed:,} at {rate:,.0f}/sec")
 
 
 class InMemory1MEventsProcessor:
@@ -128,11 +128,11 @@ class InMemory1MEventsProcessor:
     
     def __init__(self):
         self.num_cores = mp.cpu_count()
-        print(f" Using {self.num_cores} CPU cores")
+        print(f"Using {self.num_cores} CPU cores")
     
     def generate_1m_events(self, target_events=1_000_000):
         """Generate 1M events using all cores - pure in-memory"""
-        print(f" GENERATING {target_events:,} EVENTS IN-MEMORY")
+        print(f"GENERATING {target_events:,} EVENTS IN-MEMORY")
         print("=" * 50)
         
         events_per_worker = target_events // self.num_cores
@@ -165,19 +165,19 @@ class InMemory1MEventsProcessor:
         total_duration = time.time() - start_time
         aggregate_rate = total_generated / total_duration
         
-        print(f"\n GENERATION COMPLETE!")
+        print(f"\nGENERATION COMPLETE!")
         print(f"   Events Generated: {total_generated:,}")
         print(f"   Duration: {total_duration:.2f} seconds")
         print(f"   Rate: {aggregate_rate:,.0f} events/sec")
-        
+
         if aggregate_rate >= 1_000_000:
-            print(f"     1M/SEC GENERATION ACHIEVED!")
+            print(f"   1M/SEC GENERATION ACHIEVED!")
         
         return all_events, aggregate_rate
     
     def process_1m_events(self, all_events):
         """Process events using all cores - pure in-memory"""
-        print(f"\n PROCESSING {len(all_events):,} EVENTS IN-MEMORY")
+        print(f"\nPROCESSING {len(all_events):,} EVENTS IN-MEMORY")
         print("=" * 50)
         
         # Split events among workers
@@ -219,21 +219,21 @@ class InMemory1MEventsProcessor:
         total_duration = time.time() - start_time
         aggregate_rate = total_processed / total_duration
         
-        print(f"\n PROCESSING COMPLETE!")
+        print(f"\nPROCESSING COMPLETE!")
         print(f"   Events Processed: {total_processed:,}")
         print(f"   Events Deduped: {total_deduped:,}")
         print(f"   Total Revenue: ${total_revenue:,.2f}")
         print(f"   Duration: {total_duration:.2f} seconds")
         print(f"   Rate: {aggregate_rate:,.0f} events/sec")
-        
+
         if aggregate_rate >= 1_000_000:
-            print(f"     1M/SEC PROCESSING ACHIEVED!")
+            print(f"   1M/SEC PROCESSING ACHIEVED!")
         
         return total_processed, aggregate_rate
     
     def threading_speed_test(self, target_events=1_000_000):
         """Alternative: Pure threading test for maximum speed"""
-        print(f"\n THREADING SPEED TEST: {target_events:,} EVENTS")
+        print(f"\nTHREADING SPEED TEST: {target_events:,} EVENTS")
         print("=" * 50)
         
         events_per_thread = target_events // (self.num_cores * 2)  # More threads
@@ -273,7 +273,7 @@ class InMemory1MEventsProcessor:
         gen_duration = time.time() - start_time
         gen_rate = len(all_events) / gen_duration
         
-        print(f" Threading Generation: {len(all_events):,} events in {gen_duration:.2f}s = {gen_rate:,.0f}/sec")
+        print(f"Threading Generation: {len(all_events):,} events in {gen_duration:.2f}s = {gen_rate:,.0f}/sec")
         
         # Now process with threading
         processed_count = 0
@@ -312,57 +312,56 @@ class InMemory1MEventsProcessor:
         proc_duration = time.time() - start_time
         proc_rate = processed_count / proc_duration
         
-        print(f" Threading Processing: {processed_count:,} events in {proc_duration:.2f}s = {proc_rate:,.0f}/sec")
+        print(f"Threading Processing: {processed_count:,} events in {proc_duration:.2f}s = {proc_rate:,.0f}/sec")
         
         return gen_rate, proc_rate
     
     def run_comprehensive_test(self):
         """Run all tests to find maximum achievable performance"""
-        print(f" COMPREHENSIVE 1M EVENTS/SEC TEST")
+        print(f"COMPREHENSIVE 1M EVENTS/SEC TEST")
         print(f"Hardware: {self.num_cores} cores")
         print("=" * 70)
         
         # Test 1: Multiprocessing in-memory
-        print(f"\n1 MULTIPROCESSING IN-MEMORY TEST")
+        print(f"\n[1] MULTIPROCESSING IN-MEMORY TEST")
         try:
             all_events, gen_rate = self.generate_1m_events(1_000_000)
             processed_count, proc_rate = self.process_1m_events(all_events)
             mp_effective = min(gen_rate, proc_rate)
-            print(f" Multiprocessing Result: {mp_effective:,.0f} events/sec")
+            print(f"Multiprocessing Result: {mp_effective:,.0f} events/sec")
         except Exception as e:
-            print(f" Multiprocessing test failed: {e}")
+            print(f"Multiprocessing test failed: {e}")
             mp_effective = 0
         
         # Test 2: Threading speed test
-        print(f"\n2 THREADING SPEED TEST")
+        print(f"\n[2] THREADING SPEED TEST")
         try:
             thread_gen_rate, thread_proc_rate = self.threading_speed_test(1_000_000)
             thread_effective = min(thread_gen_rate, thread_proc_rate)
-            print(f" Threading Result: {thread_effective:,.0f} events/sec")
+            print(f"Threading Result: {thread_effective:,.0f} events/sec")
         except Exception as e:
-            print(f" Threading test failed: {e}")
+            print(f"Threading test failed: {e}")
             thread_effective = 0
         
         # Final results
         max_achieved = max(mp_effective, thread_effective)
         
-        print(f"\n FINAL RESULTS:")
+        print(f"\nFINAL RESULTS:")
         print(f"   Multiprocessing: {mp_effective:10,.0f} events/sec")
         print(f"   Threading:       {thread_effective:10,.0f} events/sec")
         print(f"   Maximum:         {max_achieved:10,.0f} events/sec")
         
         if max_achieved >= 1_000_000:
-            print(f"\n SUCCESS: 1M EVENTS/SEC ACHIEVED!")
-            print(f"   Your resume claim is VALIDATED ")
+            print(f"\nSUCCESS: 1M EVENTS/SEC ACHIEVED!")
             print(f"   Achievement: {max_achieved/1_000_000:.2f}x target")
         elif max_achieved >= 800_000:
-            print(f"\n VERY CLOSE: 80%+ of target achieved")
-            print(f"   Resume defensible: '{max_achieved:,.0f} events/sec, targeting 1M/sec'")
+            print(f"\nVERY CLOSE: 80%+ of target achieved")
+            print(f"   {max_achieved:,.0f} events/sec, targeting 1M/sec")
         elif max_achieved >= 500_000:
-            print(f"\n STRONG: 50%+ of target achieved")
-            print(f"   Resume context: 'High-performance system processing {max_achieved:,.0f} events/sec'")
+            print(f"\nSTRONG: 50%+ of target achieved")
+            print(f"   High-performance system processing {max_achieved:,.0f} events/sec")
         else:
-            print(f"\n OPTIMIZATION NEEDED")
+            print(f"\nOPTIMIZATION NEEDED")
             print(f"   Current: {max_achieved:,.0f} events/sec")
         
         return max_achieved
@@ -375,19 +374,18 @@ def main():
     try:
         max_rate = processor.run_comprehensive_test()
         
-        print(f"\n TEST COMPLETE!")
+        print(f"\nTEST COMPLETE!")
         print(f"Maximum achieved: {max_rate:,.0f} events/sec")
-        
-        # Specific guidance for resume
+
         if max_rate >= 1_000_000:
-            print(f"\n : '1M+ events/sec achieved'")
+            print(f"\n1M+ events/sec achieved")
         elif max_rate >= 500_000:
-            print(f"\n RESUME UPDATE: 'High-performance system processing {max_rate:,.0f} events/sec'")
+            print(f"\nHigh-performance system processing {max_rate:,.0f} events/sec")
         else:
-            print(f"\n OPTIMIZATION NEEDED for 1M/sec claim")
+            print(f"\nOptimization needed for 1M/sec target")
     
     except KeyboardInterrupt:
-        print("\n Test interrupted")
+        print("\nTest interrupted")
 
 
 if __name__ == "__main__":

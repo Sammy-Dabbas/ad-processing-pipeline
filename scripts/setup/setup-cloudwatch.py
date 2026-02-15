@@ -16,7 +16,7 @@ class CloudWatchSetup:
     def setup_cloudwatch_integration(self):
         """Set up CloudWatch monitoring for ad event system"""
 
-        print("  Setting up AWS CloudWatch Integration...")
+        print("Setting up AWS CloudWatch Integration...")
 
         # 1. Create CloudWatch Log Groups
         log_groups = [
@@ -29,9 +29,9 @@ class CloudWatchSetup:
         for log_group in log_groups:
             try:
                 self.logs.create_log_group(logGroupName=log_group)
-                print(f" Created log group: {log_group}")
+                print(f"Created log group: {log_group}")
             except self.logs.exceptions.ResourceAlreadyExistsException:
-                print(f" Log group exists: {log_group}")
+                print(f"Log group exists: {log_group}")
 
         # 2. Create Custom Metrics Namespace
         namespace = "AdEventProcessing"
@@ -57,9 +57,9 @@ class CloudWatchSetup:
                 Namespace=namespace,
                 MetricData=test_metrics
             )
-            print(" Custom metrics namespace created")
+            print("Custom metrics namespace created")
         except Exception as e:
-            print(f" Error creating metrics: {e}")
+            print(f"Error creating metrics: {e}")
 
         # 3. Create CloudWatch Alarms
         alarms = [
@@ -96,9 +96,9 @@ class CloudWatchSetup:
         for alarm in alarms:
             try:
                 self.cloudwatch.put_metric_alarm(**alarm)
-                print(f" Created alarm: {alarm['AlarmName']}")
+                print(f"Created alarm: {alarm['AlarmName']}")
             except Exception as e:
-                print(f" Error creating alarm {alarm['AlarmName']}: {e}")
+                print(f"Error creating alarm {alarm['AlarmName']}: {e}")
 
         # 4. Create Dashboard
         dashboard_body = {
@@ -132,16 +132,16 @@ class CloudWatchSetup:
                 DashboardName='AdEventProcessing',
                 DashboardBody=json.dumps(dashboard_body)
             )
-            print(" Created CloudWatch dashboard")
+            print("Created CloudWatch dashboard")
         except Exception as e:
-            print(f" Error creating dashboard: {e}")
+            print(f"Error creating dashboard: {e}")
 
-        print("\n CloudWatch setup complete!")
-        print(" Dashboard: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=AdEventProcessing")
+        print("\nCloudWatch setup complete!")
+        print("Dashboard: https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=AdEventProcessing")
 
     def send_test_metrics(self):
         """Send test metrics to verify setup"""
-        print(" Sending test metrics...")
+        print("Sending test metrics...")
 
         metrics = []
         for i in range(10):
@@ -167,9 +167,9 @@ class CloudWatchSetup:
                 Namespace='AdEventProcessing',
                 MetricData=metrics
             )
-            print(" Test metrics sent successfully")
+            print("Test metrics sent successfully")
         except Exception as e:
-            print(f" Error sending metrics: {e}")
+            print(f"Error sending metrics: {e}")
 
 if __name__ == "__main__":
     setup = CloudWatchSetup()

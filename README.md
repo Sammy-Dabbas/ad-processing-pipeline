@@ -33,7 +33,7 @@ System Reliability: 99.99% uptime
 Architecture:      25 concurrent workers, enterprise monitoring
 ```
 
-****: Real-time processing capability proven with AWS CloudWatch integration, showing sustained high-throughput performance with enterprise-grade monitoring and alerting.
+Real-time processing capability verified with AWS CloudWatch integration, showing sustained high-throughput performance with enterprise-grade monitoring and alerting.
 
 ## Architecture
 
@@ -168,15 +168,16 @@ curl http://localhost:8000/ad_events/latest | jq '.processing_rate_per_sec'
 ## Project Structure
 
 ```
-AdEvent/
+ad-processing-pipeline/
  services/
     api/                    # FastAPI REST service
     consumer/               # Event processing service
     event_generator/        # Ad event generator
     infrastructure/         # Redis, monitoring
  tests/                      # Performance tests
- ad_event_data/             # Production data
- docker-compose.yml         # Orchestration
- config.py                  # Configuration
+ scripts/setup/              # CloudWatch setup scripts
+ docs/benchmarks/            # Performance screenshots
+ docker-compose.yml          # Orchestration
+ kubernetes-1m-deployment.yaml
 ```
 

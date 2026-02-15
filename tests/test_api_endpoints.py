@@ -20,19 +20,19 @@ class APITester:
         
     def test_connection(self):
         """Test basic connectivity"""
-        print(" Testing API Connection...")
+        print("Testing API Connection...")
         
         try:
             response = self.session.get(f"{self.base_url}/health", timeout=5)
             if response.status_code == 200:
-                print(" API is running and healthy")
+                print("[PASS] API is running and healthy")
                 return True
             else:
-                print(f"  API responded with status: {response.status_code}")
+                print(f"[WARN]  API responded with status: {response.status_code}")
                 return False
         except requests.exceptions.RequestException as e:
-            print(f" Cannot connect to API: {e}")
-            print(f" Make sure to start the API with: docker-compose up -d")
+            print(f"[FAIL] Cannot connect to API: {e}")
+            print(f"Make sure to start the API with: docker-compose up -d")
             return False
     
     def test_ad_events_endpoints(self):
@@ -54,19 +54,19 @@ class APITester:
                 if response.status_code == 200:
                     data = response.json()
                     if isinstance(data, list):
-                        print(f"    {endpoint} - Returned {len(data)} items")
+                        print(f"   [PASS] {endpoint} - Returned {len(data)} items")
                         if data:  # Show sample if available
                             self.show_sample_data(endpoint, data[0])
                     elif isinstance(data, dict):
-                        print(f"    {endpoint} - Returned {len(data)} fields")
+                        print(f"   [PASS] {endpoint} - Returned {len(data)} fields")
                         self.show_sample_data(endpoint, data)
                     else:
-                        print(f"    {endpoint} - Response: {data}")
+                        print(f"   [PASS] {endpoint} - Response: {data}")
                 else:
-                    print(f"    {endpoint} - Status: {response.status_code}")
+                    print(f"   [FAIL] {endpoint} - Status: {response.status_code}")
                     
             except requests.exceptions.RequestException as e:
-                print(f"    {endpoint} - Error: {e}")
+                print(f"   [FAIL] {endpoint} - Error: {e}")
     
     def test_campaign_endpoint(self):
         """Test campaign-specific endpoint"""
@@ -88,7 +88,7 @@ class APITester:
                     
                     if campaign_response.status_code == 200:
                         campaign_events = campaign_response.json()
-                        print(f"    Campaign endpoint - Found {len(campaign_events)} events")
+                        print(f"   [PASS] Campaign endpoint - Found {len(campaign_events)} events")
                         
                         # Test with event type filter
                         click_response = self.session.get(
@@ -97,16 +97,16 @@ class APITester:
                         
                         if click_response.status_code == 200:
                             click_events = click_response.json()
-                            print(f"    Campaign clicks - Found {len(click_events)} click events")
+                            print(f"   [PASS] Campaign clicks - Found {len(click_events)} click events")
                     else:
-                        print(f"    Campaign endpoint failed: {campaign_response.status_code}")
+                        print(f"   [FAIL] Campaign endpoint failed: {campaign_response.status_code}")
                 else:
-                    print("     No events found to test campaign endpoint")
+                    print("   [WARN]  No events found to test campaign endpoint")
             else:
-                print(f"    Could not get events: {response.status_code}")
+                print(f"   [FAIL] Could not get events: {response.status_code}")
                 
         except requests.exceptions.RequestException as e:
-            print(f"    Campaign test error: {e}")
+            print(f"   [FAIL] Campaign test error: {e}")
     
     def show_sample_data(self, endpoint, data, max_fields=5):
         """Show sample data from responses"""
@@ -142,11 +142,11 @@ class APITester:
                 response = self.session.get(f"{self.base_url}{path}", timeout=5)
                 if response.status_code == 200:
                     content_length = len(response.content)
-                    print(f"    {name} - {content_length:,} bytes")
+                    print(f"   [PASS] {name} - {content_length:,} bytes")
                 else:
-                    print(f"    {name} - Status: {response.status_code}")
+                    print(f"   [FAIL] {name} - Status: {response.status_code}")
             except requests.exceptions.RequestException as e:
-                print(f"    {name} - Error: {e}")
+                print(f"   [FAIL] {name} - Error: {e}")
     
     def performance_test(self, duration_seconds=10):
         """Simple performance test"""
@@ -182,22 +182,22 @@ class APITester:
             min_response_time = min(response_times)
             max_response_time = max(response_times)
             
-            print(f"    Requests: {request_count}, Errors: {errors}")
+            print(f"   [PASS] Requests: {request_count}, Errors: {errors}")
             print(f"    Avg response: {avg_response_time:.1f}ms")
             print(f"    Min/Max: {min_response_time:.1f}ms / {max_response_time:.1f}ms")
             
             # Check if we're meeting latency targets
             if avg_response_time < 20:
-                print(f"     Meeting <20ms latency target!")
+                print(f"    [PASS] Meeting <20ms latency target!")
             else:
-                print(f"      Above 20ms target (API + network overhead)")
+                print(f"    [WARN]  Above 20ms target (API + network overhead)")
         else:
-            print(f"    No successful requests in {total_time:.1f}s")
+            print(f"   [FAIL] No successful requests in {total_time:.1f}s")
 
 
 def main():
     """Run API testing suite"""
-    print(" **AD EVENT API TESTING SUITE**")
+    print("**AD EVENT API TESTING SUITE**")
     print("=" * 45)
     
     # Check if custom URL provided
@@ -205,13 +205,13 @@ def main():
     if len(sys.argv) > 1:
         base_url = sys.argv[1]
     
-    print(f" Testing API at: {base_url}")
+    print(f"Testing API at: {base_url}")
     
     tester = APITester(base_url)
     
     # Test 1: Basic connectivity
     if not tester.test_connection():
-        print("\n Cannot proceed - API is not accessible")
+        print("\n[FAIL] Cannot proceed - API is not accessible")
         print("\n **To start the system:**")
         print("   1. Make sure Docker Desktop is running")
         print("   2. Run: docker-compose up --build -d")
@@ -231,8 +231,8 @@ def main():
     # Test 5: Simple performance test
     tester.performance_test(duration_seconds=5)
     
-    print(f"\n **API Testing Complete!**")
-    print(f" View dashboard at: {base_url}")
+    print(f"\n[PASS] **API Testing Complete!**")
+    print(f"View dashboard at: {base_url}")
 
 
 if __name__ == "__main__":

@@ -25,11 +25,11 @@ class MillionEventsPerSecondProcessor:
         
         # Use all CPU cores
         self.num_cores = mp.cpu_count()
-        print(f" Using {self.num_cores} CPU cores for maximum performance")
+        print(f"Using {self.num_cores} CPU cores for maximum performance")
         
     def generate_1m_events_per_second(self, duration_seconds=30):
         """Generate events at 1M/sec using all available optimizations"""
-        print(f" GENERATING 1M EVENTS/SEC FOR {duration_seconds} SECONDS")
+        print(f"GENERATING 1M EVENTS/SEC FOR {duration_seconds} SECONDS")
         print("=" * 60)
         
         target_events = 1_000_000 * duration_seconds
@@ -114,10 +114,10 @@ class MillionEventsPerSecondProcessor:
                 'output_file': output_file
             })
             
-            print(f" Worker {worker_id}: {events_generated:,} events at {rate:,.0f}/sec")
+            print(f"Worker {worker_id}: {events_generated:,} events at {rate:,.0f}/sec")
         
         # Start all worker processes
-        print(f" Starting {self.num_cores} worker processes...")
+        print(f"Starting {self.num_cores} worker processes...")
         processes = []
         
         for worker_id in range(self.num_cores):
@@ -134,17 +134,17 @@ class MillionEventsPerSecondProcessor:
         total_duration = max(r['duration'] for r in results)
         aggregate_rate = total_events / max(total_duration, 0.001)
         
-        print(f"\n GENERATION COMPLETE!")
+        print(f"\nGENERATION COMPLETE!")
         print(f"   Total Events: {total_events:,}")
         print(f"   Duration: {total_duration:.1f} seconds")
         print(f"   Aggregate Rate: {aggregate_rate:,.0f} events/sec")
-        
+
         if aggregate_rate >= 1_000_000:
-            print(f"     1M/SEC TARGET ACHIEVED! ({aggregate_rate/1_000_000:.1f}x)")
+            print(f"   1M/SEC TARGET ACHIEVED! ({aggregate_rate/1_000_000:.1f}x)")
         elif aggregate_rate >= 500_000:
-            print(f"    CLOSE: {aggregate_rate/1_000_000:.1f}x of 1M/sec target")
+            print(f"   CLOSE: {aggregate_rate/1_000_000:.1f}x of 1M/sec target")
         else:
-            print(f"    OPTIMIZATION NEEDED: {aggregate_rate/1_000_000:.1f}x of target")
+            print(f"   OPTIMIZATION NEEDED: {aggregate_rate/1_000_000:.1f}x of target")
         
         # Combine all worker files into one
         combined_file = self.output_dir / "combined_1m_events.jsonl"
@@ -154,7 +154,7 @@ class MillionEventsPerSecondProcessor:
     
     def combine_worker_files(self, results, output_file):
         """Combine all worker files into single file"""
-        print(f" Combining worker files into {output_file.name}...")
+        print(f"Combining worker files into {output_file.name}...")
         
         with open(output_file, 'w', encoding='utf-8', buffering=1024*1024) as outf:
             for result in results:
@@ -168,23 +168,23 @@ class MillionEventsPerSecondProcessor:
                                 break
                             outf.write(chunk)
         
-        print(f" Combined file created: {output_file}")
+        print(f"Combined file created: {output_file}")
     
     def process_1m_events_per_second(self, input_file):
         """Process events at 1M/sec using maximum parallelization"""
-        print(f"\n PROCESSING 1M EVENTS/SEC")
+        print(f"\nPROCESSING 1M EVENTS/SEC")
         print("=" * 40)
         
         if not input_file.exists():
-            print(f" Input file not found: {input_file}")
+            print(f"Input file not found: {input_file}")
             return 0, 0
         
         # Memory map the entire file for ultra-fast access
-        print(f" Memory-mapping input file...")
+        print(f"Memory-mapping input file...")
         file_size = input_file.stat().st_size
         
         if file_size == 0:
-            print(" Input file is empty")
+            print("Input file is empty")
             return 0, 0
         
         manager = mp.Manager()
@@ -294,10 +294,10 @@ class MillionEventsPerSecondProcessor:
                 'output_file': output_file
             })
             
-            print(f" Processor {worker_id}: {events_processed:,} events at {rate:,.0f}/sec")
+            print(f"Processor {worker_id}: {events_processed:,} events at {rate:,.0f}/sec")
         
         # Start processing workers
-        print(f" Starting {self.num_cores} processing workers...")
+        print(f"Starting {self.num_cores} processing workers...")
         processes = []
         
         for worker_id in range(self.num_cores):
@@ -319,19 +319,19 @@ class MillionEventsPerSecondProcessor:
         max_duration = max(r['duration'] for r in processing_results)
         aggregate_rate = total_processed / max(max_duration, 0.001)
         
-        print(f"\n PROCESSING COMPLETE!")
+        print(f"\nPROCESSING COMPLETE!")
         print(f"   Events Processed: {total_processed:,}")
         print(f"   Events Deduped: {total_deduped:,}")
         print(f"   Total Revenue: ${total_revenue:,.2f}")
         print(f"   Duration: {max_duration:.1f} seconds")
         print(f"   Processing Rate: {aggregate_rate:,.0f} events/sec")
-        
+
         if aggregate_rate >= 1_000_000:
-            print(f"     1M/SEC PROCESSING ACHIEVED! ({aggregate_rate/1_000_000:.1f}x)")
+            print(f"   1M/SEC PROCESSING ACHIEVED! ({aggregate_rate/1_000_000:.1f}x)")
         elif aggregate_rate >= 500_000:
-            print(f"    CLOSE: {aggregate_rate/1_000_000:.1f}x of 1M/sec target")
+            print(f"   CLOSE: {aggregate_rate/1_000_000:.1f}x of 1M/sec target")
         else:
-            print(f"    OPTIMIZATION NEEDED: {aggregate_rate/1_000_000:.1f}x of target")
+            print(f"   OPTIMIZATION NEEDED: {aggregate_rate/1_000_000:.1f}x of target")
         
         # Combine processed files
         combined_processed = self.output_dir / "combined_processed_1m.jsonl"
@@ -341,7 +341,7 @@ class MillionEventsPerSecondProcessor:
     
     def run_full_1m_test(self):
         """Run complete 1M events/sec test"""
-        print(f" FULL 1M EVENTS/SEC TEST")
+        print(f"FULL 1M EVENTS/SEC TEST")
         print(f"Hardware: {self.num_cores} cores, {os.cpu_count()} logical processors")
         print("=" * 70)
         
@@ -354,24 +354,20 @@ class MillionEventsPerSecondProcessor:
         # Results
         effective_rate = min(gen_rate, proc_rate)
         
-        print(f"\n FINAL RESULTS:")
+        print(f"\nFINAL RESULTS:")
         print(f"   Generation Rate:  {gen_rate:10,.0f} events/sec")
         print(f"   Processing Rate:  {proc_rate:10,.0f} events/sec")
         print(f"   Effective Rate:   {effective_rate:10,.0f} events/sec")
         
         if effective_rate >= 1_000_000:
-            print(f"\n SUCCESS: 1M EVENTS/SEC ACHIEVED!")
-            print(f"   Your resume claim is VALIDATED ")
+            print(f"\nSUCCESS: 1M EVENTS/SEC ACHIEVED!")
             print(f"   {effective_rate:,.0f} events/sec = {effective_rate/1_000_000:.1f}x target")
         elif effective_rate >= 800_000:
-            print(f"\n VERY CLOSE: 80%+ of 1M/sec target")
-            print(f"   Resume claim defensible with optimization notes")
+            print(f"\nVERY CLOSE: 80%+ of 1M/sec target")
         elif effective_rate >= 500_000:
-            print(f"\n STRONG PERFORMANCE: 50%+ of target")
-            print(f"   Resume claim needs qualification")
+            print(f"\nSTRONG PERFORMANCE: 50%+ of target")
         else:
-            print(f"\n OPTIMIZATION NEEDED")
-            print(f"   Resume claim requires architecture changes")
+            print(f"\nOPTIMIZATION NEEDED")
         
         return effective_rate
 
@@ -380,24 +376,24 @@ def main():
     """Execute 1M events/sec test"""
     processor = MillionEventsPerSecondProcessor()
     
-    print(" EXECUTING 1M EVENTS/SEC TEST - NO EXCUSES")
+    print("EXECUTING 1M EVENTS/SEC TEST")
     print("Removing all bottlenecks to achieve target performance")
     
     try:
         effective_rate = processor.run_full_1m_test()
         
-        print(f"\n TEST COMPLETE!")
+        print(f"\nTEST COMPLETE!")
         print(f"Achieved {effective_rate:,.0f} events/sec effective throughput")
-        
+
         if effective_rate >= 1_000_000:
-            print(f" RESUME CLAIM VALIDATED: 1M+ events/sec achieved!")
+            print(f"1M+ events/sec achieved!")
         else:
-            print(f"  RESUME CLAIM NEEDS CONTEXT: {effective_rate:,.0f} events/sec demonstrated")
+            print(f"{effective_rate:,.0f} events/sec demonstrated")
     
     except KeyboardInterrupt:
-        print("\n Test interrupted")
+        print("\nTest interrupted")
     except Exception as e:
-        print(f"\n Test failed: {e}")
+        print(f"\nTest failed: {e}")
 
 
 if __name__ == "__main__":
